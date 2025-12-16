@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Conversation threads
+model Conversation {
+  id        String    @id @default(cuid())
+  title     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+// Individual messages in a conversation
+model Message {
+  id             String       @id @default(cuid())
+  role           String       // 'user' or 'assistant'
+  content        String
+  toolsUsed      String?      // JSON array of tool names used
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+}
+
+// Agent memory - key-value store for persistent context
+model Memory {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON value
+  category  String?  // Optional grouping (e.g., 'user_prefs', 'incidents', 'runbooks')
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Incident records - for tracking and learning
+model Incident {
+  id          String   @id @default(cuid())
+  externalId  String?  @unique // Rootly/PagerDuty ID
+  title       String
+  severity    String?
+  status      String?
+  summary     String?
+  rootCause   String?
+  resolution  String?
+  tags        String?  // JSON array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  resolvedAt  DateTime?
+}
+
+// Configurable agents per role
+model Agent {
+  id           String   @id @default(cuid())
+  slug         String   // e.g., "incident-commander", "log-analyzer"
+  role         String   // e.g., "sre", "product-manager"
+  name         String   // Display name
+  description  String?  // Short description for UI
+  systemPrompt String   // The actual prompt text
+  icon         String?  // Icon identifier
+  isDefault    Boolean  @default(false) // System-provided vs user-created
+  isHidden     Boolean  @default(false) // User can hide agents from sidebar
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([slug, role])
+}

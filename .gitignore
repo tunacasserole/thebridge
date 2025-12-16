@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backup files
+*.backup
+*.new
+
+# database
+*.db
+*.sqlite
+
+/app/generated/prisma
+.mcp.json

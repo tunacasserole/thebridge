@@ -6,15 +6,31 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset --force"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.69",
+    "@anthropic-ai/claude-code": "^2.0.69",
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@prisma/adapter-better-sqlite3": "^7.1.0",
+    "@prisma/client": "^7.1.0",
+    "better-sqlite3": "^12.5.0",
     "next": "16.0.10",
+    "prisma": "^7.1.0",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "react-markdown": "^10.1.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
