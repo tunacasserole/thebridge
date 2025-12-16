@@ -354,6 +354,7 @@ model UsageSnapshot {
 model Lesson {
   id        String   @id @default(cuid())
   name      String   // Display name of the lesson
+  prompt    String?  @db.Text // AI prompt used to generate the content
   content   String   @db.Text // Markdown content of the lesson
   sortOrder Int      @default(0) // Order in the lessons list
   isPublished Boolean @default(true) // Whether the lesson is visible

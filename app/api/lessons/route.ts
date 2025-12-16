@@ -36,7 +36,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, content, sortOrder } = body;
+    const { name, content, prompt, sortOrder } = body;
 
     if (!name || !content) {
       return NextResponse.json(
@@ -45,11 +45,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get the maximum sortOrder to place new lesson at the end
+    const maxSortOrder = await prisma.lesson.aggregate({
+      _max: { sortOrder: true },
+    });
+    const newSortOrder = sortOrder ?? ((maxSortOrder._max.sortOrder ?? 0) + 1);
+
     const lesson = await prisma.lesson.create({
       data: {
         name,
         content,
-        sortOrder: sortOrder ?? 0,
+        prompt,
+        sortOrder: newSortOrder,
       },
     });
 

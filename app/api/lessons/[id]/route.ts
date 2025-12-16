@@ -49,13 +49,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, content, sortOrder, isPublished } = body;
+    const { name, content, prompt, sortOrder, isPublished } = body;
 
     const lesson = await prisma.lesson.update({
       where: { id },
       data: {
         ...(name !== undefined && { name }),
         ...(content !== undefined && { content }),
+        ...(prompt !== undefined && { prompt }),
         ...(sortOrder !== undefined && { sortOrder }),
         ...(isPublished !== undefined && { isPublished }),
       },
