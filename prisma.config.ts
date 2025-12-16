@@ -2,23 +2,13 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { defineConfig } from "prisma/config";
 
-// Load .env.local with override to ensure it takes precedence
+// Load .env.local with override to ensure it takes precedence (local dev)
 const envLocalPath = path.resolve(process.cwd(), ".env.local");
-const result = dotenv.config({ path: envLocalPath, override: true });
-
-// Debug: uncomment to troubleshoot
-// console.log("Loaded from:", envLocalPath);
-// console.log("DATABASE_URL starts with:", process.env.DATABASE_URL?.substring(0, 30));
+dotenv.config({ path: envLocalPath, override: true });
 
 export default defineConfig({
-  earlyAccess: true,
   schema: "prisma/schema.prisma",
-  migrate: {
-    // Use direct URL for migrations (bypasses pgbouncer)
-    url: process.env.DIRECT_URL!,
-  },
   datasource: {
-    // Use pooled URL for application queries
     url: process.env.DATABASE_URL!,
   },
 });
