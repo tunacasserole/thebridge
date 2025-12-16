@@ -1,0 +1,60 @@
+# Fly.io Configuration for MCP Hub Server
+# Deploy with: fly launch --config packages/mcp-hub/fly.toml
+
+app = "thebridge-mcp-hub"
+primary_region = "ord"  # Chicago - adjust to your preference
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+# Secrets to set (fly secrets set KEY=VALUE):
+# GITHUB_PERSONAL_ACCESS_TOKEN
+# SLACK_BOT_TOKEN
+# SLACK_TEAM_ID
+# METABASE_URL
+# METABASE_API_KEY
+# KUBECONFIG (contents of kubeconfig file, base64 encoded)
+# PROMETHEUS_URL
+# GMAIL_OAUTH_CLIENT_ID
+# GMAIL_OAUTH_CLIENT_SECRET
+# GOOGLE_OAUTH_CLIENT_ID
+# GOOGLE_OAUTH_CLIENT_SECRET
+# SNOWFLAKE_ACCOUNT
+# SNOWFLAKE_USER
+# SNOWFLAKE_PASSWORD
+# SNOWFLAKE_WAREHOUSE
+# SNOWFLAKE_DATABASE
+# SNOWFLAKE_SCHEMA
+# AIRBYTE_API_KEY
+# ARGOCD_SERVER
+# ARGOCD_AUTH_TOKEN
+# GRAFANA_URL
+# GRAFANA_API_KEY
+# FIGMA_PERSONAL_ACCESS_TOKEN
+# ZOOM_ACCOUNT_ID
+# ZOOM_CLIENT_ID
+# ZOOM_CLIENT_SECRET
