@@ -4,6 +4,7 @@ import { useSession, signIn, signOut } from "next-auth/react"
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import Icon from "@/components/ui/Icon"
+import { colors } from "@/lib/colors"
 
 export function UserMenu() {
   const { data: session, status } = useSession()
@@ -86,52 +87,74 @@ export function UserMenu() {
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-56 rounded-lg
-            bg-md-surface-container border border-md-outline-variant
-            shadow-lg overflow-hidden z-50"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            right: 0,
+            minWidth: '280px',
+            background: colors.surfaceContainer,
+            border: `1px solid ${colors.outline}`,
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            zIndex: 1000,
+            overflow: 'hidden',
+          }}
           role="menu"
         >
-          {/* User Info */}
-          <div className="px-4 py-3 border-b border-md-outline-variant">
-            <p className="text-sm font-medium text-md-on-surface truncate">
+          {/* User Info Header */}
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.outline}` }}>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: colors.onSurfaceVariant,
+                letterSpacing: '0.5px',
+                marginBottom: '8px',
+              }}
+            >
+              ACCOUNT
+            </div>
+            <p style={{ fontSize: '14px', fontWeight: 500, color: colors.onSurface, margin: 0 }}>
               {session.user?.name || "User"}
             </p>
-            <p className="text-xs text-md-on-surface-variant truncate">
+            <p style={{ fontSize: '11px', color: colors.onSurfaceVariant, margin: 0 }}>
               {session.user?.email}
             </p>
           </div>
 
           {/* Menu Items */}
-          <div className="py-1">
-            <a
-              href="/settings"
-              className="flex items-center gap-3 px-4 py-2 text-sm text-md-on-surface
-                hover:bg-md-surface-container-high transition-colors"
-              role="menuitem"
-            >
-              <Icon name="settings" size={18} />
-              Settings
-            </a>
-            <a
-              href="/settings/api-keys"
-              className="flex items-center gap-3 px-4 py-2 text-sm text-md-on-surface
-                hover:bg-md-surface-container-high transition-colors"
-              role="menuitem"
-            >
-              <Icon name="key" size={18} />
-              API Keys
-            </a>
+          <div style={{ padding: '8px' }}>
+            <MenuItem href="/settings" icon="settings" label="Settings" />
+            <MenuItem href="/settings/api-keys" icon="key" label="API Keys" />
           </div>
 
           {/* Sign Out */}
-          <div className="border-t border-md-outline-variant py-1">
+          <div style={{ padding: '8px', borderTop: `1px solid ${colors.outline}` }}>
             <button
               onClick={() => signOut()}
-              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-md-error
-                hover:bg-md-error-container/30 transition-colors"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                border: 'none',
+                borderRadius: '8px',
+                background: 'transparent',
+                color: colors.error,
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                fontSize: '14px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
               role="menuitem"
             >
-              <Icon name="logout" size={18} />
+              <Icon name="logout" size={20} style={{ color: colors.error }} />
               Sign Out
             </button>
           </div>
@@ -139,4 +162,41 @@ export function UserMenu() {
       )}
     </div>
   )
+}
+
+interface MenuItemProps {
+  href: string;
+  icon: string;
+  label: string;
+}
+
+function MenuItem({ href, icon, label }: MenuItemProps) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        background: 'transparent',
+        color: colors.onSurface,
+        textDecoration: 'none',
+        marginBottom: '4px',
+        transition: 'background 0.2s',
+        fontSize: '14px',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = colors.surfaceContainerHighest;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+      }}
+      role="menuitem"
+    >
+      <Icon name={icon} size={20} style={{ color: colors.onSurfaceVariant }} />
+      {label}
+    </a>
+  );
 }
