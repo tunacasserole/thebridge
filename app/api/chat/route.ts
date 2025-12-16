@@ -3,17 +3,30 @@
  *
  * Uses standard @anthropic-ai/sdk with custom agent loop.
  * Compatible with Vercel serverless deployment.
+ * Supports per-user API keys via authentication.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import { ALL_TOOLS, executeTool } from '@/lib/tools';
+import { getAuthenticatedUser, getUserApiKey } from '@/lib/auth';
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Get Anthropic client (creates per-request for user API key support)
+async function getAnthropicClient(): Promise<Anthropic> {
+  const user = await getAuthenticatedUser();
+
+  if (user?.id) {
+    // Try to get user's personal API key
+    const userApiKey = await getUserApiKey(user.id);
+    if (userApiKey) {
+      return new Anthropic({ apiKey: userApiKey });
+    }
+  }
+
+  // Fall back to server API key
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
 // Model mapping
 const MODEL_MAP: Record<string, string> = {
@@ -139,6 +152,9 @@ export async function POST(request: NextRequest) {
           while (iterations < MAX_ITERATIONS) {
             iterations++;
             console.log(`[Chat] Iteration ${iterations}`);
+
+            // Get client for this request (supports per-user API keys)
+            const anthropic = await getAnthropicClient();
 
             // Call Claude
             const response = await anthropic.messages.create({

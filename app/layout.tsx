@@ -8,6 +8,7 @@ import { RoleProvider } from "@/contexts/RoleContext";
 import { MultiAgentProvider } from "@/contexts/MultiAgentContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { SkipLinks } from "@/components/accessibility";
+import { SessionProvider } from "@/components/auth";
 
 // Material Symbols font URL
 const materialSymbolsUrl = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap";
@@ -43,20 +44,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
       >
-        <ThemeProvider defaultVariant="midnight-command" defaultMode="auto">
-          <RoleProvider>
-            <MultiAgentProvider>
-              <DashboardProvider>
-                <SkipLinks />
-                <Header />
-                <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden" role="main">
-                  {children}
-                </main>
-                <Footer />
-              </DashboardProvider>
-            </MultiAgentProvider>
-          </RoleProvider>
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider defaultVariant="midnight-command" defaultMode="auto">
+            <RoleProvider>
+              <MultiAgentProvider>
+                <DashboardProvider>
+                  <SkipLinks />
+                  <Header />
+                  <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden" role="main">
+                    {children}
+                  </main>
+                  <Footer />
+                </DashboardProvider>
+              </MultiAgentProvider>
+            </RoleProvider>
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );
