@@ -134,14 +134,19 @@ TheBridge uses Claude Code GitHub Actions to automatically implement issues.
 
 ### Required Setup
 
-1. **Add the Anthropic API Key** to repository secrets:
+1. **Install the Claude Code GitHub App**:
+   - Visit: https://github.com/apps/claude
+   - Click "Install" and select this repository
+   - Or run `/install-github-app` in Claude Code terminal
+
+2. **Add the Anthropic API Key** to repository secrets:
    ```
    Settings → Secrets and variables → Actions → New repository secret
    Name: ANTHROPIC_API_KEY
    Value: <your-api-key>
    ```
 
-2. **Create the `claude-implement` label** (optional, for safety):
+3. **Create the `claude-implement` label** (optional, for safety):
    ```bash
    gh label create claude-implement --color "5319E7" --description "Claude will auto-implement this issue"
    ```
