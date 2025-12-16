@@ -101,3 +101,63 @@ gh pr merge --squash --delete-branch
 2. Use kebab-case for the title portion
 3. Keep branch names concise but descriptive
 4. Maximum 50 characters for the title portion
+
+---
+
+## Automated Issue Implementation (GitHub Actions)
+
+TheBridge uses Claude Code GitHub Actions to automatically implement issues.
+
+### How It Works
+
+1. **Issue Triage** (`claude-triage.yml`): When a new issue is opened, Claude automatically:
+   - Analyzes the issue content
+   - Adds appropriate labels (bug, enhancement, frontend, backend, etc.)
+   - Identifies if it's a good candidate for auto-implementation
+   - Optionally adds the `claude-implement` label for straightforward tasks
+
+2. **Auto-Implementation** (`claude-implement.yml`): When an issue has the `claude-implement` label:
+   - Claude reads the issue and CLAUDE.md guidelines
+   - Creates a feature branch following naming conventions
+   - Implements the requested changes
+   - Creates a pull request that closes the issue
+
+### Triggering Implementation
+
+**Automatic (via label):**
+- Add the `claude-implement` label to any issue
+- Claude will begin implementation automatically
+
+**Manual (via mention):**
+- Comment `@claude implement this` on any issue
+- Claude will respond and begin implementation
+
+### Required Setup
+
+1. **Add the Anthropic API Key** to repository secrets:
+   ```
+   Settings → Secrets and variables → Actions → New repository secret
+   Name: ANTHROPIC_API_KEY
+   Value: <your-api-key>
+   ```
+
+2. **Create the `claude-implement` label** (optional, for safety):
+   ```bash
+   gh label create claude-implement --color "5319E7" --description "Claude will auto-implement this issue"
+   ```
+
+### Safety Controls
+
+- Issues require the `claude-implement` label for automatic implementation
+- The triage workflow is conservative about adding this label
+- Complex or ambiguous issues are flagged for human review
+- Failed implementations post a comment with the workflow run link
+
+### Best Practices for Issues
+
+For best auto-implementation results, write issues that include:
+- Clear, specific title describing the task
+- Detailed description of what needs to be done
+- Acceptance criteria or expected behavior
+- Any relevant file paths or code references
+- Edge cases or constraints to consider

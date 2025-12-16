@@ -1,0 +1,78 @@
+name: Claude Issue Triage
+
+# Automatically analyze and label new issues
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Triage Issue with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          prompt: |
+            Analyze this new GitHub issue and triage it appropriately.
+
+            REPOSITORY: ${{ github.repository }}
+            ISSUE NUMBER: ${{ github.event.issue.number }}
+            TITLE: ${{ github.event.issue.title }}
+            AUTHOR: ${{ github.event.issue.user.login }}
+
+            BODY:
+            ${{ github.event.issue.body }}
+
+            TRIAGE INSTRUCTIONS:
+            1. Determine the issue type:
+               - bug: Something isn't working correctly
+               - enhancement: New feature or improvement request
+               - documentation: Documentation updates needed
+               - question: User needs help or clarification
+
+            2. Assess complexity:
+               - good first issue: Simple, well-defined, good for newcomers
+               - help wanted: Could use community contribution
+               - complex: Requires significant effort or expertise
+
+            3. Identify area:
+               - frontend: UI/UX related
+               - backend: API, database, server-side
+               - auth: Authentication/authorization
+               - ai: AI/Claude integration
+               - infra: DevOps, CI/CD, deployment
+
+            4. Check for:
+               - Missing information that should be requested
+               - Duplicate issues (search existing issues)
+               - Security concerns that need immediate attention
+
+            ACTIONS TO TAKE:
+            - Add appropriate labels using: gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2"
+            - If the issue is clear and well-scoped, consider adding 'claude-implement' label
+            - If information is missing, post a comment asking for clarification
+            - If it appears to be a duplicate, comment with a link to the original
+
+            Be conservative with the 'claude-implement' label - only add it for well-defined,
+            straightforward tasks that can be implemented without human guidance.
+
+          allowed_tools: |
+            Bash(gh issue:*)
+            Bash(gh search:*)
+            Read
+            Grep
+
+          max_turns: 10
