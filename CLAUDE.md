@@ -1,5 +1,18 @@
 # TheBridge - Claude Code Instructions
 
+## ⚠️ CRITICAL: Always Create PRs
+
+**Every change MUST go through a Pull Request.** Do not commit directly to `main`.
+
+- **One PR per issue** - Each GitHub issue gets its own branch and PR
+- **One PR per task** - Even without an issue, create a PR for any meaningful change
+- **Merge immediately** - Once the PR is created and passes checks, merge it right away
+- **Don't batch changes** - Small, focused PRs are better than large ones
+
+This applies to ALL Claude instances working on this repo. No exceptions.
+
+---
+
 ## GitHub Issue Workflow
 
 When handling a GitHub issue, follow this workflow:
