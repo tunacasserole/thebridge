@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -60,11 +61,28 @@ const errorMessages: Record<string, { title: string; description: string }> = {
   },
 }
 
-export default function AuthErrorPage() {
+function ErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get("error") || "Default"
   const { title, description } = errorMessages[error] || errorMessages.Default
 
+  return (
+    <>
+      {/* Error Icon */}
+      <div className="flex justify-center mb-4">
+        <div className="w-16 h-16 rounded-full bg-md-error-container flex items-center justify-center">
+          <Icon name="error" size={32} className="text-md-error" />
+        </div>
+      </div>
+
+      {/* Error Message */}
+      <h1 className="text-xl font-semibold text-md-on-surface mb-2">{title}</h1>
+      <p className="text-sm text-md-on-surface-variant mb-8">{description}</p>
+    </>
+  )
+}
+
+export default function AuthErrorPage() {
   return (
     <div className="min-h-full flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm text-center">
@@ -80,16 +98,9 @@ export default function AuthErrorPage() {
           />
         </div>
 
-        {/* Error Icon */}
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-full bg-md-error-container flex items-center justify-center">
-            <Icon name="error" size={32} className="text-md-error" />
-          </div>
-        </div>
-
-        {/* Error Message */}
-        <h1 className="text-xl font-semibold text-md-on-surface mb-2">{title}</h1>
-        <p className="text-sm text-md-on-surface-variant mb-8">{description}</p>
+        <Suspense fallback={<div className="h-32 animate-pulse" />}>
+          <ErrorContent />
+        </Suspense>
 
         {/* Actions */}
         <div className="space-y-3">

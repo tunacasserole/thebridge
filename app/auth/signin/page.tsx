@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { signIn, getProviders } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
@@ -17,7 +18,7 @@ const providerIcons: Record<string, string> = {
   google: "mail",
 }
 
-export default function SignInPage() {
+function SignInContent() {
   const [providers, setProviders] = useState<Record<string, Provider> | null>(null)
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const searchParams = useSearchParams()
@@ -33,6 +34,55 @@ export default function SignInPage() {
     await signIn(providerId, { callbackUrl })
   }
 
+  return (
+    <>
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-3 rounded-lg bg-md-error-container/20 border border-md-error/30">
+          <p className="text-sm text-md-error text-center">
+            {error === "OAuthAccountNotLinked"
+              ? "This email is already associated with another account."
+              : "An error occurred during sign in. Please try again."}
+          </p>
+        </div>
+      )}
+
+      {/* Provider Buttons */}
+      <div className="space-y-3">
+        {providers ? (
+          Object.values(providers).map((provider) => (
+            <button
+              key={provider.id}
+              onClick={() => handleSignIn(provider.id)}
+              disabled={isLoading !== null}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3
+                rounded-xl border border-md-outline
+                bg-md-surface hover:bg-md-surface-container-high
+                text-md-on-surface font-medium
+                transition-colors duration-150
+                disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading === provider.id ? (
+                <span className="w-5 h-5 border-2 border-md-primary/30 border-t-md-primary rounded-full animate-spin" />
+              ) : (
+                <Icon name={providerIcons[provider.id] || "account_circle"} size={20} />
+              )}
+              Continue with {provider.name}
+            </button>
+          ))
+        ) : (
+          // Loading skeleton
+          <div className="space-y-3">
+            <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
+            <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+export default function SignInPage() {
   return (
     <div className="min-h-full flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
@@ -57,48 +107,14 @@ export default function SignInPage() {
             Sign in to access your SRE command center
           </p>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-3 rounded-lg bg-md-error-container/20 border border-md-error/30">
-              <p className="text-sm text-md-error text-center">
-                {error === "OAuthAccountNotLinked"
-                  ? "This email is already associated with another account."
-                  : "An error occurred during sign in. Please try again."}
-              </p>
+          <Suspense fallback={
+            <div className="space-y-3">
+              <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
+              <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
             </div>
-          )}
-
-          {/* Provider Buttons */}
-          <div className="space-y-3">
-            {providers ? (
-              Object.values(providers).map((provider) => (
-                <button
-                  key={provider.id}
-                  onClick={() => handleSignIn(provider.id)}
-                  disabled={isLoading !== null}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3
-                    rounded-xl border border-md-outline
-                    bg-md-surface hover:bg-md-surface-container-high
-                    text-md-on-surface font-medium
-                    transition-colors duration-150
-                    disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading === provider.id ? (
-                    <span className="w-5 h-5 border-2 border-md-primary/30 border-t-md-primary rounded-full animate-spin" />
-                  ) : (
-                    <Icon name={providerIcons[provider.id] || "account_circle"} size={20} />
-                  )}
-                  Continue with {provider.name}
-                </button>
-              ))
-            ) : (
-              // Loading skeleton
-              <div className="space-y-3">
-                <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
-                <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
-              </div>
-            )}
-          </div>
+          }>
+            <SignInContent />
+          </Suspense>
         </div>
 
         {/* Footer */}
