@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import TokenBudgetDisplay from './TokenBudgetDisplay';
 import QueryOptimizer from './QueryOptimizer';
@@ -814,6 +815,14 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         >
           {verbose ? '✓ Verbose' : 'Verbose'}
         </button>
+        <span className="text-[var(--md-outline-variant)]">|</span>
+        <Link
+          href="/code"
+          className="text-xs text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)] transition-colors duration-200"
+          title="View code examples"
+        >
+          Code
+        </Link>
         <span className="text-[var(--md-outline-variant)]">|</span>
         <button
           type="button"
