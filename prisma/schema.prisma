@@ -155,6 +155,7 @@ model MCPServerDefinition {
   name        String   // Display name
   description String?  // What this MCP server does
   icon        String?  // Icon identifier for UI
+  category    String   @default("observability") // "observability" | "infrastructure" | "productivity" | "data" | "devops"
 
   // Transport configuration
   transportType String  @default("sse") // "sse" | "http" | "stdio"
