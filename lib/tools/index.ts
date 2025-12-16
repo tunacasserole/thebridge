@@ -1,9 +1,15 @@
 /**
  * Tools Module
  *
- * Exports tool definitions and executor for Claude agent loop.
+ * ALL tools come from MCP servers dynamically.
+ * No hardcoded tools - users control which MCPs are enabled via the UI.
  */
 
-export { ALL_TOOLS, TOOL_CATEGORIES, getEnabledTools } from './definitions';
-export * from './definitions';
-export { executeTool, type ToolResult } from './executor';
+// MCP dynamic tools - the only source of tools
+export {
+  loadMCPTools,
+  executeMCPTool,
+  closeMCPConnections,
+  getConnectedServers,
+  getAvailableMCPServers,
+} from '../mcp/client';

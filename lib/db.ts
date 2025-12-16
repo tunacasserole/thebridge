@@ -18,9 +18,9 @@ if (process.env.NODE_ENV !== 'production') {
 // Helper functions for common operations
 
 // Conversations
-export async function createConversation(title?: string) {
+export async function createConversation(userId: string, title?: string) {
   return prisma.conversation.create({
-    data: { title },
+    data: { userId, title },
   });
 }
 

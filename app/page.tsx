@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSession } from "next-auth/react";
 import ChatInterface, { ChatInterfaceHandle } from "@/components/ChatInterface";
 import ToolsSidebar, { ALL_TOOL_IDS } from "@/components/ToolsSidebar";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import MultiAgentGrid from "@/components/MultiAgentGrid";
 import PromptEditorPanel from "@/components/PromptEditorPanel";
+import ConversationList from "@/components/ConversationList";
 import { LandingPage } from "@/components/LandingPage";
 import { useMultiAgent } from "@/contexts/MultiAgentContext";
 import { useDashboard } from "@/contexts/DashboardContext";
@@ -21,8 +22,11 @@ export default function Home() {
   const isAuthenticated = !!session;
   const isLoading = status === "loading";
 
-  // Default all tools to enabled
+  // Default all tools to enabled, will be updated from API
   const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set(ALL_TOOL_IDS));
+  const [isLoadingMcpConfigs, setIsLoadingMcpConfigs] = useState(true);
+  // Map tool slug to server ID for API calls
+  const [toolSlugToServerId, setToolSlugToServerId] = useState<Map<string, string>>(new Map());
   // Sidebar mode - hidden, mini (icons + abbreviated names), or full
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('full');
   // Track if the main agent is actively processing
@@ -37,6 +41,9 @@ export default function Home() {
   const [isCreateMode, setIsCreateMode] = useState(false);
   // Key to trigger agent list refresh in sidebar
   const [agentRefreshKey, setAgentRefreshKey] = useState(0);
+  // Conversation management
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showConversationList, setShowConversationList] = useState(false);
 
   // Get multi-agent context
   const {
@@ -57,7 +64,77 @@ export default function Home() {
   const showDashboard = viewMode === 'dashboard';
   const showMultiAgent = viewMode === 'multiagent';
 
-  const toggleTool = (toolId: string) => {
+  // Load saved MCP configurations on mount
+  useEffect(() => {
+    const loadMcpConfigs = async () => {
+      // Skip if not authenticated
+      if (!isAuthenticated) {
+        setIsLoadingMcpConfigs(false);
+        return;
+      }
+
+      try {
+        // Fetch both server definitions and user configs in parallel
+        const [serversResponse, configsResponse] = await Promise.all([
+          fetch('/api/mcp/servers'),
+          fetch('/api/mcp/user-configs'),
+        ]);
+
+        // Build slug-to-ID mapping from server definitions
+        const slugToIdMap = new Map<string, string>();
+        if (serversResponse.ok) {
+          const servers = await serversResponse.json();
+          servers.forEach((server: { id: string; slug: string }) => {
+            slugToIdMap.set(server.slug, server.id);
+          });
+          setToolSlugToServerId(slugToIdMap);
+        }
+
+        // Load user configs if available
+        if (configsResponse.ok) {
+          const configs = await configsResponse.json();
+
+          // Create a set of enabled tools based on saved configs
+          const savedEnabledTools = new Set<string>();
+
+          // Add all tools that have isEnabled=true from configs
+          configs.forEach((config: {
+            serverId: string;
+            isEnabled: boolean;
+            server: { id: string; slug: string }
+          }) => {
+            if (config.isEnabled) {
+              // Use server.slug as the tool ID (matches sidebar tool IDs)
+              savedEnabledTools.add(config.server.slug);
+            }
+          });
+
+          // If user has saved configs, use them; otherwise keep default (all enabled)
+          if (configs.length > 0) {
+            // For tools not in saved configs, default to enabled
+            ALL_TOOL_IDS.forEach(toolId => {
+              const hasConfig = configs.some((c: { server: { slug: string } }) => c.server.slug === toolId);
+              if (!hasConfig) {
+                savedEnabledTools.add(toolId);
+              }
+            });
+
+            setEnabledTools(savedEnabledTools);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load MCP configs:', error);
+        // Keep default state on error
+      } finally {
+        setIsLoadingMcpConfigs(false);
+      }
+    };
+
+    loadMcpConfigs();
+  }, [isAuthenticated]);
+
+  const toggleTool = async (toolId: string) => {
+    // Optimistically update UI
     setEnabledTools((prev) => {
       const next = new Set(prev);
       if (next.has(toolId)) {
@@ -67,6 +144,46 @@ export default function Home() {
       }
       return next;
     });
+
+    // Persist to backend if authenticated
+    if (isAuthenticated) {
+      try {
+        // Get the server ID for this tool slug
+        const serverId = toolSlugToServerId.get(toolId);
+
+        if (!serverId) {
+          console.warn(`No server ID found for tool: ${toolId}`);
+          return;
+        }
+
+        const isEnabled = !enabledTools.has(toolId);
+        const response = await fetch('/api/mcp/user-configs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serverId,
+            isEnabled,
+            config: {}, // Empty config object as required
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save config');
+        }
+      } catch (error) {
+        console.error('Failed to save MCP config:', error);
+        // Revert on error
+        setEnabledTools((prev) => {
+          const next = new Set(prev);
+          if (next.has(toolId)) {
+            next.delete(toolId);
+          } else {
+            next.add(toolId);
+          }
+          return next;
+        });
+      }
+    }
   };
 
   // Handle clicking an agent in the sidebar
@@ -216,6 +333,24 @@ export default function Home() {
     console.log(`Agent ${isHidden ? 'hidden' : 'shown'} successfully`);
   }, [currentRole]);
 
+  // Handle selecting a conversation from the list
+  const handleSelectConversation = useCallback((conversationId: string) => {
+    setCurrentConversationId(conversationId);
+    setViewMode('chat');
+  }, [setViewMode]);
+
+  // Handle starting a new conversation
+  const handleNewConversation = useCallback(() => {
+    setCurrentConversationId(null);
+    chatRef.current?.startNewConversation();
+    setViewMode('chat');
+  }, [setViewMode]);
+
+  // Handle when a new conversation is created
+  const handleConversationCreated = useCallback((id: string) => {
+    setCurrentConversationId(id);
+  }, []);
+
   // Derive showDevTools for backward compatibility
   // Hide sidebar in dashboard mode since agents/MCPs aren't relevant there
   const showDevTools = sidebarMode !== 'hidden' && !showDashboard;
@@ -229,8 +364,8 @@ export default function Home() {
     });
   }, []);
 
-  // Show loading spinner during auth check
-  if (isLoading) {
+  // Show loading spinner during auth check or MCP config loading
+  if (isLoading || (isAuthenticated && isLoadingMcpConfigs)) {
     return (
       <div
         className="flex-1 flex items-center justify-center"
@@ -292,6 +427,8 @@ export default function Home() {
                 onToggleTools={cycleSidebarMode}
                 toolsOpen={showDevTools}
                 onLoadingChange={setIsAgentActive}
+                conversationId={currentConversationId}
+                onConversationCreated={handleConversationCreated}
               />
             </div>
           )}
@@ -372,6 +509,44 @@ export default function Home() {
           )}
         </button>
       )}
+
+      {/* Conversation History Button - Only show in chat mode */}
+      {showChat && !(editingPromptAgentId !== null || isCreateMode) && (
+        <button
+          onClick={() => setShowConversationList(true)}
+          className={`
+            fixed bottom-9 left-6 z-50
+            w-14 h-14 rounded-full
+            flex items-center justify-center
+            transition-all duration-300 ease-out
+            hover:scale-110 active:scale-95
+            focus:outline-none focus:ring-2 focus:ring-offset-2
+            shadow-lg hover:shadow-xl
+            bg-[var(--md-surface-container-high)] hover:bg-[var(--md-surface-container-highest)]
+            border border-[var(--md-outline-variant)]
+          `}
+          style={{
+            // @ts-expect-error CSS custom property for focus ring
+            '--tw-ring-color': 'var(--md-accent)',
+            '--tw-ring-offset-color': 'var(--md-surface)',
+          }}
+          aria-label="View conversation history"
+          title="View conversation history"
+        >
+          <svg className="w-6 h-6 text-[var(--md-on-surface)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      )}
+
+      {/* Conversation List Panel */}
+      <ConversationList
+        currentConversationId={currentConversationId}
+        onSelectConversation={handleSelectConversation}
+        onNewConversation={handleNewConversation}
+        isOpen={showConversationList}
+        onClose={() => setShowConversationList(false)}
+      />
     </div>
   );
 }

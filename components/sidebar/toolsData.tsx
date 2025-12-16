@@ -498,6 +498,15 @@ export function getAgentsForRole(role: UserRole): AgentDefinition[] {
   return agents.filter(agent => !agent.roles || agent.roles.includes(role));
 }
 
+// All MCP server IDs (these can actually connect to MCP servers in .mcp.json)
+// Note: CORE_TOOL_IDS (bash, edit, glob, grep, etc.) are UI-only definitions
+// that represent tools Claude has natively - they don't have MCP server configs
+export const ALL_MCP_SERVER_IDS = [
+  ...OBSERVABILITY_MCP_IDS,
+  ...SALES_MARKETING_MCP_IDS,
+  ...PRODUCTIVITY_MCP_IDS,
+];
+
 // Exclude tools that need additional configuration
 // slack needs SLACK_TEAM_ID, salesforce/hubspot need API credentials
 const DISABLED_BY_DEFAULT = ['slack', 'salesforce', 'hubspot'];

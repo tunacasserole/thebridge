@@ -14,10 +14,14 @@ datasource db {
 // Conversation threads
 model Conversation {
   id        String    @id @default(cuid())
+  userId    String
   title     String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   messages  Message[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Individual messages in a conversation
@@ -92,6 +96,18 @@ model User {
   anthropicApiKey String?  @db.Text  // Encrypted API key
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // User's MCP server configurations
+  mcpConfigs    UserMCPConfig[]
+
+  // User's conversations
+  conversations Conversation[]
+
+  // Analytics & usage tracking
+  tokenUsage    TokenUsage[]
+  budget        Budget?
+  usageSnapshots UsageSnapshot[]
+  toolUsageStats ToolUsageStat[]
 }
 
 model Account {
@@ -126,4 +142,203 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ============================================
+// MCP Server Configuration (per-user)
+// ============================================
+
+// Available MCP server definitions (admin-managed catalog)
+model MCPServerDefinition {
+  id          String   @id @default(cuid())
+  slug        String   @unique // e.g., "coralogix", "github", "newrelic"
+  name        String   // Display name
+  description String?  // What this MCP server does
+  icon        String?  // Icon identifier for UI
+
+  // Transport configuration
+  transportType String  @default("sse") // "sse" | "http" | "stdio"
+
+  // Default configuration template (JSON)
+  // Contains: url pattern, required env vars, default args
+  configTemplate String @db.Text
+
+  // Documentation/help
+  docsUrl     String?
+
+  // Server metadata
+  isOfficial  Boolean  @default(false) // Official/verified MCP server
+  isEnabled   Boolean  @default(true)  // Globally enabled/disabled
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // User configurations for this server
+  userConfigs UserMCPConfig[]
+}
+
+// User-specific MCP server configurations
+model UserMCPConfig {
+  id        String   @id @default(cuid())
+  userId    String
+  serverId  String
+
+  // User's configuration for this server (JSON)
+  // Contains: api keys, custom URLs, env overrides
+  config    String   @db.Text
+
+  // User preferences
+  isEnabled Boolean  @default(true)  // User can enable/disable
+  priority  Int      @default(0)     // Order preference
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server    MCPServerDefinition @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId])
+}
+
+// ============================================
+// Cache System (L3 Persistent Cache)
+// ============================================
+
+// L3 cache entries for persistent caching
+model CacheEntry {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text // JSON value
+  ttl       Int      // Time to live in seconds
+  expiresAt DateTime // Expiration timestamp
+  hits      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt]) // For efficient expiration queries
+  @@index([hits]) // For finding popular entries
+}
+
+// ============================================
+// Token Usage & Analytics
+// ============================================
+
+// Tool usage tracking for dynamic loading optimization
+model ToolUsageStat {
+  id        String   @id @default(cuid())
+  userId    String
+  toolName  String   // Full tool name (e.g., "coralogix__query_logs")
+  agentId   String?  // Optional: which agent used this tool
+
+  // Usage metrics
+  usageCount        Int      @default(1)
+  firstUsed         DateTime @default(now())
+  lastUsed          DateTime @default(now())
+
+  // Performance metrics
+  avgExecutionTimeMs Float   @default(0)
+  successCount      Int      @default(0)
+  successRate       Float    @default(100) // Percentage
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, toolName])
+  @@index([userId])
+  @@index([usageCount])
+  @@index([lastUsed])
+}
+
+// Token usage tracking per API call
+model TokenUsage {
+  id        String   @id @default(cuid())
+  userId    String
+
+  // Model information
+  model     String   // e.g., "claude-sonnet-4-20250514"
+  modelType String   // "sonnet", "opus", "haiku"
+
+  // Token counts
+  inputTokens       Int
+  outputTokens      Int
+  thinkingTokens    Int      @default(0)
+  totalTokens       Int      // calculated: input + output + thinking
+
+  // Context
+  conversationId    String?
+  agentSlug         String?  // Which agent was used
+  toolsUsed         String?  // JSON array of tool names
+
+  // Cost calculation (in cents, to avoid float precision issues)
+  estimatedCostCents Int     // Cost in cents (divide by 100 for dollars)
+
+  // Metadata
+  success           Boolean  @default(true)
+  errorMessage      String?
+  responseTimeMs    Int?     // Response time in milliseconds
+
+  createdAt         DateTime @default(now())
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([modelType])
+  @@index([createdAt])
+}
+
+// Budget tracking and alerts
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+
+  // Monthly budget limits (in cents)
+  monthlyLimitCents Int      @default(10000) // $100 default
+
+  // Alert thresholds (percentages)
+  alertThreshold1   Int      @default(50)  // 50%
+  alertThreshold2   Int      @default(75)  // 75%
+  alertThreshold3   Int      @default(90)  // 90%
+
+  // Alert tracking
+  lastAlertSent     DateTime?
+  alertsSentThisMonth Int    @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Analytics snapshots for performance
+model UsageSnapshot {
+  id                String   @id @default(cuid())
+  userId            String
+
+  // Period
+  period            String   // "daily", "weekly", "monthly"
+  periodStart       DateTime
+  periodEnd         DateTime
+
+  // Aggregated metrics
+  totalCalls        Int
+  totalTokens       Int
+  totalCostCents    Int
+
+  // By model
+  sonnetCalls       Int      @default(0)
+  opusCalls         Int      @default(0)
+  haikuCalls        Int      @default(0)
+
+  // Performance
+  avgResponseTimeMs Int?
+  successRate       Float    @default(100)
+
+  createdAt         DateTime @default(now())
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period, periodStart])
+  @@index([userId, period])
+  @@index([periodStart])
 }

@@ -11,12 +11,15 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
+    "test:tokens": "playwright test tests/tokens",
+    "benchmark:tokens": "npx tsx tests/benchmarks/tokenUsage.ts",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "npx prisma migrate reset --force"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@auth/prisma-adapter": "^2.11.1",
+    "@modelcontextprotocol/sdk": "^1.25.0",
     "@prisma/client": "^6.8.0",
     "next": "16.0.10",
     "next-auth": "^5.0.0-beta.30",
@@ -25,6 +28,7 @@
     "react-dom": "19.2.1",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.0",
+    "recharts": "^2.15.0",
     "remark-gfm": "^4.0.1",
     "zod": "^3.24.1"
   },

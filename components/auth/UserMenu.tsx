@@ -126,6 +126,7 @@ export function UserMenu() {
           <div style={{ padding: '8px' }}>
             <MenuItem href="/settings" icon="settings" label="Settings" />
             <MenuItem href="/settings/api-keys" icon="key" label="API Keys" />
+            <MenuItem href="/settings/mcp" icon="hub" label="MCP Servers" />
           </div>
 
           {/* Sign Out */}
