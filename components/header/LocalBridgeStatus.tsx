@@ -37,10 +37,12 @@ export default function LocalBridgeStatus() {
   const config = statusConfig[connectionState];
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       <button
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
         onClick={() => {
           if (connectionState === 'connected') {
             disconnect();
