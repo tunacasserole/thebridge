@@ -3,8 +3,7 @@
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
-import Icon from "@/components/ui/Icon"
+import { AuthLayout } from "@/components/auth"
 
 const errorMessages: Record<string, { title: string; description: string }> = {
   Configuration: {
@@ -67,61 +66,79 @@ function ErrorContent() {
   const { title, description } = errorMessages[error] || errorMessages.Default
 
   return (
-    <>
+    <div className="text-center">
       {/* Error Icon */}
-      <div className="flex justify-center mb-4">
-        <div className="w-16 h-16 rounded-full bg-md-error-container flex items-center justify-center">
-          <Icon name="error" size={32} className="text-md-error" />
+      <div className="flex justify-center mb-6">
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--md-error-container)' }}
+        >
+          <span
+            className="material-symbols-outlined text-4xl"
+            style={{ color: 'var(--md-error)' }}
+          >
+            error
+          </span>
         </div>
       </div>
 
       {/* Error Message */}
-      <h1 className="text-xl font-semibold text-md-on-surface mb-2">{title}</h1>
-      <p className="text-sm text-md-on-surface-variant mb-8">{description}</p>
-    </>
+      <h1
+        className="text-2xl font-bold mb-3"
+        style={{ color: 'var(--md-on-surface)' }}
+      >
+        {title}
+      </h1>
+      <p
+        className="text-base mb-8"
+        style={{ color: 'var(--md-on-surface-variant)' }}
+      >
+        {description}
+      </p>
+
+      {/* Actions */}
+      <div className="space-y-3">
+        <Link
+          href="/auth/signin"
+          className="block w-full px-6 py-4 rounded-xl font-medium
+            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: 'var(--md-primary)',
+            color: 'var(--md-on-primary)',
+          }}
+        >
+          Try Again
+        </Link>
+        <Link
+          href="/"
+          className="block w-full px-6 py-4 rounded-xl font-medium
+            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: 'var(--md-surface-container-high)',
+            border: '1px solid var(--md-outline)',
+            color: 'var(--md-on-surface)',
+          }}
+        >
+          Go Home
+        </Link>
+      </div>
+    </div>
   )
 }
 
 export default function AuthErrorPage() {
   return (
-    <div className="min-h-full flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm text-center">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <Image
-            src="/thebridge-logo-dark.svg"
-            alt="TheBridge"
-            width={180}
-            height={50}
-            priority
-            className="h-12 w-auto"
+    <AuthLayout>
+      <Suspense
+        fallback={
+          <div
+            className="h-48 rounded-xl animate-pulse"
+            style={{ background: 'var(--md-surface-container-high)' }}
           />
-        </div>
-
-        <Suspense fallback={<div className="h-32 animate-pulse" />}>
-          <ErrorContent />
-        </Suspense>
-
-        {/* Actions */}
-        <div className="space-y-3">
-          <Link
-            href="/auth/signin"
-            className="block w-full px-4 py-3 rounded-xl
-              bg-md-primary text-md-on-primary font-medium
-              hover:bg-md-primary/90 transition-colors"
-          >
-            Try Again
-          </Link>
-          <Link
-            href="/"
-            className="block w-full px-4 py-3 rounded-xl
-              border border-md-outline text-md-on-surface font-medium
-              hover:bg-md-surface-container-high transition-colors"
-          >
-            Go Home
-          </Link>
-        </div>
-      </div>
-    </div>
+        }
+      >
+        <ErrorContent />
+      </Suspense>
+    </AuthLayout>
   )
 }
