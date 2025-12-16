@@ -424,6 +424,25 @@ export default function Home() {
             />
           </div>
         )}
+        {/* Expand button when sidebar is hidden in learn mode */}
+        {showLearn && sidebarMode === 'hidden' && (
+          <button
+            onClick={cycleSidebarMode}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-r-lg bg-[var(--md-surface-container)] border border-l-0 border-[var(--md-outline-variant)] hover:bg-[var(--md-surface-container-high)] transition-colors"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="w-4 h-4 text-[var(--md-on-surface-variant)]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        )}
       </aside>
 
       {/* Main Content */}
