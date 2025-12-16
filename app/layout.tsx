@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { MultiAgentProvider } from "@/contexts/MultiAgentContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
+import { LearnProvider } from "@/contexts/LearnContext";
 import { SessionProvider } from "@/components/auth";
 import { LocalBridgeProvider } from "@/contexts/LocalBridgeContext";
 
@@ -48,11 +49,13 @@ export default function RootLayout({
             <RoleProvider>
               <MultiAgentProvider>
                 <DashboardProvider>
-                  <LocalBridgeProvider>
-                    <AppShell>
-                      {children}
-                    </AppShell>
-                  </LocalBridgeProvider>
+                  <LearnProvider>
+                    <LocalBridgeProvider>
+                      <AppShell>
+                        {children}
+                      </AppShell>
+                    </LocalBridgeProvider>
+                  </LearnProvider>
                 </DashboardProvider>
               </MultiAgentProvider>
             </RoleProvider>

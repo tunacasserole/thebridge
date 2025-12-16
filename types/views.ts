@@ -8,7 +8,7 @@
 /**
  * Available view modes in TheBridge
  */
-export type ViewMode = 'chat' | 'dashboard' | 'multiagent';
+export type ViewMode = 'chat' | 'dashboard' | 'multiagent' | 'learn';
 
 /**
  * Agent status states

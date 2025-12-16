@@ -4,6 +4,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSession } from "next-auth/react";
 import ChatInterface, { ChatInterfaceHandle } from "@/components/ChatInterface";
 import ToolsSidebar, { ALL_TOOL_IDS } from "@/components/ToolsSidebar";
+import LearnSidebar from "@/components/LearnSidebar";
+import LessonContent from "@/components/LessonContent";
+import RadialFAB from "@/components/RadialFAB";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import MultiAgentGrid from "@/components/MultiAgentGrid";
 import PromptEditorPanel from "@/components/PromptEditorPanel";
@@ -13,6 +16,7 @@ import { useMultiAgent } from "@/contexts/MultiAgentContext";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useRole } from "@/contexts/RoleContext";
 import type { OpenAgent } from "@/components/AgentPanelContainer";
+import type { ViewMode } from "@/types/views";
 
 export type SidebarMode = 'hidden' | 'mini' | 'full';
 
@@ -63,6 +67,7 @@ export default function Home() {
   const showChat = viewMode === 'chat';
   const showDashboard = viewMode === 'dashboard';
   const showMultiAgent = viewMode === 'multiagent';
+  const showLearn = viewMode === 'learn';
 
   // Load saved MCP configurations on mount
   useEffect(() => {
@@ -229,17 +234,14 @@ export default function Home() {
     isMinimized: false,
   }));
 
-  // Toggle between chat/dashboard
-  const handleFabClick = useCallback(() => {
-    if (showDashboard) {
-      // Go back to previous view (chat or multiagent)
-      setViewMode(gridAgents.length > 0 ? 'multiagent' : 'chat');
-    } else {
+  // Handle mode change from RadialFAB
+  const handleModeChange = useCallback((mode: ViewMode) => {
+    if (mode === 'dashboard') {
       // Reset dashboard to show radial launcher (no panels open)
       resetLauncher();
-      setViewMode('dashboard');
     }
-  }, [showDashboard, gridAgents.length, setViewMode, resetLauncher]);
+    setViewMode(mode);
+  }, [setViewMode, resetLauncher]);
 
   // Handle opening prompt editor for existing agent
   const handleEditPrompt = useCallback((agentId: string) => {
@@ -353,7 +355,9 @@ export default function Home() {
 
   // Derive showDevTools for backward compatibility
   // Hide sidebar in dashboard mode since agents/MCPs aren't relevant there
-  const showDevTools = sidebarMode !== 'hidden' && !showDashboard;
+  // In learn mode, we show LearnSidebar instead of ToolsSidebar
+  const showDevTools = sidebarMode !== 'hidden' && !showDashboard && !showLearn;
+  const showLearnSidebar = sidebarMode !== 'hidden' && showLearn;
 
   // Cycle through sidebar modes: hidden -> mini -> full -> hidden
   const cycleSidebarMode = useCallback(() => {
@@ -389,7 +393,7 @@ export default function Home() {
 
   return (
     <div className="flex-1 flex overflow-hidden relative">
-      {/* Tools Sidebar - Fixed position within viewport, hidden in dashboard mode */}
+      {/* Sidebar - ToolsSidebar or LearnSidebar based on mode, hidden in dashboard mode */}
       <aside
         className={`
           flex-shrink-0 transition-all duration-300 ease-out
@@ -409,6 +413,14 @@ export default function Home() {
               mode={sidebarMode}
               onToggleMode={cycleSidebarMode}
               agentRefreshKey={agentRefreshKey}
+            />
+          </div>
+        )}
+        {showLearnSidebar && (
+          <div className="h-full overflow-hidden">
+            <LearnSidebar
+              mode={sidebarMode}
+              onToggleMode={cycleSidebarMode}
             />
           </div>
         )}
@@ -450,6 +462,11 @@ export default function Home() {
               <DashboardGrid />
             </div>
           )}
+
+          {/* Learn View - Lesson content display */}
+          {showLearn && (
+            <LessonContent />
+          )}
         </div>
       </div>
 
@@ -465,49 +482,13 @@ export default function Home() {
         onToggleHidden={handleToggleHidden}
       />
 
-      {/* FAB - Toggle between Dashboard and Chat/MultiAgent */}
+      {/* Radial FAB - Mode switcher with radial expansion */}
       {/* Hidden when PromptEditorPanel is open */}
-      {/* Orange when dashboard is showing, Yellow when chat is showing */}
       {!(editingPromptAgentId !== null || isCreateMode) && (
-        <button
-          onClick={handleFabClick}
-          className={`
-            fixed bottom-9 right-6 z-50
-            w-14 h-14 rounded-full
-            flex items-center justify-center
-            transition-all duration-300 ease-out
-            hover:scale-110 active:scale-95
-            focus:outline-none focus:ring-2 focus:ring-offset-2
-            shadow-lg hover:shadow-xl
-          `}
-          style={{
-            background: showDashboard
-              ? 'linear-gradient(135deg, #f97316, #ea580c)' // Orange when in dashboard mode
-              : 'linear-gradient(135deg, #fbbf24, #f59e0b)', // Yellow when in chat mode
-            boxShadow: showDashboard
-              ? '0 4px 20px rgba(249, 115, 22, 0.5), var(--elevation-3)'
-              : '0 4px 20px rgba(251, 191, 36, 0.5), var(--elevation-3)',
-            // @ts-expect-error CSS custom property for focus ring
-            '--tw-ring-color': showDashboard
-              ? 'rgba(249, 115, 22, 0.5)'
-              : 'rgba(251, 191, 36, 0.5)',
-            '--tw-ring-offset-color': 'var(--md-surface)',
-          }}
-          aria-label={showDashboard ? 'Switch to Chat' : 'Switch to Dashboard'}
-          title={showDashboard ? 'Switch to Chat' : 'Switch to Dashboard'}
-        >
-          {!showDashboard ? (
-            // Dashboard icon (grid)
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-          ) : (
-            // Chat icon (message bubble)
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          )}
-        </button>
+        <RadialFAB
+          currentMode={viewMode}
+          onModeChange={handleModeChange}
+        />
       )}
 
       {/* Conversation History Button - Only show in chat mode */}
