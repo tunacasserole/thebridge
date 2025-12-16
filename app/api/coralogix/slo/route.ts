@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadMCPTools, executeMCPTool } from '@/lib/mcp/client';
-import type { CoralogixSLOResponse } from '@/lib/coralogix/types';
+import type { CoralogixSLOResponse, CoralogixSLO } from '@/lib/coralogix/types';
 
 export async function GET() {
   try {
@@ -33,8 +33,10 @@ export async function GET() {
     }
 
     // Transform the result to match the expected CoralogixSLOResponse format
+    // MCP data is untyped, so we cast it to the expected format
+    const resultData = result.data as { slos?: CoralogixSLO[] } | CoralogixSLO[];
     const response: CoralogixSLOResponse = {
-      slos: Array.isArray(result.data) ? result.data : result.data?.slos || [],
+      slos: Array.isArray(resultData) ? resultData : resultData?.slos || [],
     };
 
     return NextResponse.json(response);

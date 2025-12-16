@@ -33,8 +33,9 @@ export async function GET() {
     }
 
     // Transform the result to match the expected CoralogixUsageResponse format
+    const resultData = result.data as { usage?: CoralogixUsageResponse['usage']; quota?: CoralogixUsageResponse['quota'] } | null;
     const response: CoralogixUsageResponse = {
-      usage: result.data?.usage || {
+      usage: resultData?.usage || {
         totalGB: 0,
         byPriority: {
           high: 0,
@@ -43,7 +44,7 @@ export async function GET() {
         },
         byApplication: {},
       },
-      quota: result.data?.quota,
+      quota: resultData?.quota,
     };
 
     return NextResponse.json(response);

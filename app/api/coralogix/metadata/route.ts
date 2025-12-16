@@ -33,15 +33,13 @@ export async function GET(request: Request) {
       'coralogix__get_metadata',
     ];
 
-    let result;
-    let foundTool = false;
+    let result: { success: boolean; data?: unknown; error?: string } | undefined;
 
     if (type === 'applications') {
       // Try application tools
       for (const toolName of ['coralogix__get_applications', 'coralogix__list_applications']) {
         const tool = tools.find(t => t.name === toolName);
         if (tool) {
-          foundTool = true;
           result = await executeMCPTool(toolName, {});
           break;
         }
@@ -56,7 +54,6 @@ export async function GET(request: Request) {
       for (const toolName of ['coralogix__get_subsystems', 'coralogix__list_subsystems']) {
         const tool = tools.find(t => t.name === toolName);
         if (tool) {
-          foundTool = true;
           result = await executeMCPTool(toolName, params);
           break;
         }
@@ -72,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     // If no specific tool found, return empty array
-    if (!foundTool) {
+    if (!result) {
       return NextResponse.json({
         success: true,
         data: [],

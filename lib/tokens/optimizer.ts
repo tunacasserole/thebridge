@@ -60,10 +60,10 @@ export function optimizeConversationHistory(
     if (typeof msg.content === 'string') {
       totalTokens += countTextTokens(msg.content);
     } else if (Array.isArray(msg.content)) {
-      totalTokens += msg.content.reduce((sum, block) => {
+      totalTokens += (msg.content as unknown[]).reduce<number>((sum, block) => {
         if (typeof block === 'string') return sum + countTextTokens(block);
         if (block && typeof block === 'object' && 'text' in block) {
-          return sum + countTextTokens(block.text as string);
+          return sum + countTextTokens((block as { text: string }).text);
         }
         return sum;
       }, 0);
@@ -87,10 +87,10 @@ export function optimizeConversationHistory(
     if (typeof msg.content === 'string') {
       msgTokens = countTextTokens(msg.content);
     } else if (Array.isArray(msg.content)) {
-      msgTokens = msg.content.reduce((sum, block) => {
+      msgTokens = (msg.content as unknown[]).reduce<number>((sum, block) => {
         if (typeof block === 'string') return sum + countTextTokens(block);
         if (block && typeof block === 'object' && 'text' in block) {
-          return sum + countTextTokens(block.text as string);
+          return sum + countTextTokens((block as { text: string }).text);
         }
         return sum;
       }, 0);

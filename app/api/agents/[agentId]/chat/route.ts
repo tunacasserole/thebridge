@@ -89,6 +89,12 @@ export async function POST(
       return Response.json({ error: 'Message is required' }, { status: 400 });
     }
 
+    // Determine which MCP servers to enable
+    // Use agent's configured mcpServers if available, otherwise use what user enabled
+    const serversToEnable = agentConfig.mcpServers.length > 0
+      ? agentConfig.mcpServers
+      : enabledTools;
+
     // Route to appropriate model based on query complexity
     const routingDecision = routeToModel(message, {
       conversationHistory,
@@ -109,12 +115,6 @@ export async function POST(
       reason: routingDecision.reason,
       costSavings: routingDecision.costSavings,
     });
-
-    // Determine which MCP servers to enable
-    // Use agent's configured mcpServers if available, otherwise use what user enabled
-    const serversToEnable = agentConfig.mcpServers.length > 0
-      ? agentConfig.mcpServers
-      : enabledTools;
 
     // Load tools from MCP servers
     const { tools: allTools, serverNames, failedServers } = await loadMCPTools(serversToEnable);

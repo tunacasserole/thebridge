@@ -6,12 +6,22 @@
 
 import { prisma } from '@/lib/db';
 import { calculateCost } from './costCalculator';
-import type Anthropic from '@anthropic-ai/sdk';
+
+/**
+ * Minimal usage data required for tracking
+ * Accepts both full Anthropic.Usage and simpler { input_tokens, output_tokens }
+ */
+export interface UsageData {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+}
 
 export interface TrackingData {
   userId: string;
   model: string;
-  usage: Anthropic.Usage;
+  usage: UsageData;
   conversationId?: string;
   agentSlug?: string;
   toolsUsed?: string[];

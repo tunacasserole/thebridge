@@ -14,19 +14,16 @@ const MCP_SERVER_DEFINITIONS = [
     name: 'Coralogix',
     description: 'Log management and observability platform with DataPrime query support',
     icon: 'monitoring',
-    transportType: 'sse',
+    transportType: 'http',
     configTemplate: {
-      command: 'npx',
-      args: [
-        '-y',
-        'mcp-remote',
-        'https://api.${CORALOGIX_REGION}.coralogix.com/mgmt/api/v1/mcp',
-        '--header',
-        'Authorization:Bearer ${CORALOGIX_API_KEY}',
-      ],
+      type: 'http',
+      url: 'https://api.${CORALOGIX_REGION}.coralogix.com/mgmt/api/v1/mcp',
+      headers: {
+        Authorization: 'Bearer ${CORALOGIX_API_KEY}',
+      },
       env: {
         CORALOGIX_API_KEY: '',
-        CORALOGIX_REGION: 'us1',
+        CORALOGIX_REGION: 'coralogix.us',
       },
     },
     docsUrl: 'https://coralogix.com/docs/user-guides/mcp-server/overview/',
@@ -183,20 +180,117 @@ const MCP_SERVER_DEFINITIONS = [
     isOfficial: false,
   },
   {
-    slug: 'cloudflare',
-    name: 'Cloudflare',
-    description: 'CDN, DNS, Workers, R2, D1, KV - manage Cloudflare services',
-    icon: 'public',
-    transportType: 'stdio',
+    slug: 'cloudflare-observability',
+    name: 'Cloudflare Observability',
+    description: 'Cloudflare observability - metrics, analytics, and monitoring for your zones and workers',
+    icon: 'monitoring',
+    transportType: 'http',
     configTemplate: {
-      command: 'npx',
-      args: ['-y', '@cloudflare/mcp-server-cloudflare'],
+      type: 'http',
+      url: 'https://observability.mcp.cloudflare.com/mcp',
+      headers: {
+        'Authorization': 'Bearer ${CLOUDFLARE_API_TOKEN}',
+      },
       env: {
         CLOUDFLARE_API_TOKEN: '',
-        CLOUDFLARE_ACCOUNT_ID: '',
       },
     },
-    docsUrl: 'https://github.com/cloudflare/mcp-server-cloudflare',
+    docsUrl: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/',
+    isOfficial: true,
+  },
+  {
+    slug: 'cloudflare-dns',
+    name: 'Cloudflare DNS Analytics',
+    description: 'DNS analytics and insights for your Cloudflare zones',
+    icon: 'dns',
+    transportType: 'http',
+    configTemplate: {
+      type: 'http',
+      url: 'https://dns-analytics.mcp.cloudflare.com/mcp',
+      headers: {
+        'Authorization': 'Bearer ${CLOUDFLARE_API_TOKEN}',
+      },
+      env: {
+        CLOUDFLARE_API_TOKEN: '',
+      },
+    },
+    docsUrl: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/',
+    isOfficial: true,
+  },
+  {
+    slug: 'cloudflare-workers',
+    name: 'Cloudflare Workers',
+    description: 'Workers bindings - manage KV, R2, D1, Durable Objects, and other Worker bindings',
+    icon: 'cloud_sync',
+    transportType: 'http',
+    configTemplate: {
+      type: 'http',
+      url: 'https://bindings.mcp.cloudflare.com/mcp',
+      headers: {
+        'Authorization': 'Bearer ${CLOUDFLARE_API_TOKEN}',
+      },
+      env: {
+        CLOUDFLARE_API_TOKEN: '',
+      },
+    },
+    docsUrl: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/',
+    isOfficial: true,
+  },
+  {
+    slug: 'cloudflare-logs',
+    name: 'Cloudflare Logs',
+    description: 'Logpush - access and analyze Cloudflare logs',
+    icon: 'description',
+    transportType: 'http',
+    configTemplate: {
+      type: 'http',
+      url: 'https://logs.mcp.cloudflare.com/mcp',
+      headers: {
+        'Authorization': 'Bearer ${CLOUDFLARE_API_TOKEN}',
+      },
+      env: {
+        CLOUDFLARE_API_TOKEN: '',
+      },
+    },
+    docsUrl: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/',
+    isOfficial: true,
+  },
+  {
+    slug: 'cloudflare-audit',
+    name: 'Cloudflare Audit Logs',
+    description: 'Audit logs - track account activity and changes',
+    icon: 'history',
+    transportType: 'http',
+    configTemplate: {
+      type: 'http',
+      url: 'https://auditlogs.mcp.cloudflare.com/mcp',
+      headers: {
+        'Authorization': 'Bearer ${CLOUDFLARE_API_TOKEN}',
+      },
+      env: {
+        CLOUDFLARE_API_TOKEN: '',
+      },
+    },
+    docsUrl: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/',
+    isOfficial: true,
+  },
+  {
+    slug: 'cloudflare-graphql',
+    name: 'Cloudflare GraphQL',
+    description: 'GraphQL API - flexible queries for zones, analytics, and more',
+    icon: 'data_object',
+    transportType: 'http',
+    configTemplate: {
+      type: 'http',
+      url: 'https://graphql.mcp.cloudflare.com/mcp',
+      headers: {
+        'Authorization': 'Bearer ${CLOUDFLARE_API_TOKEN}',
+      },
+      env: {
+        CLOUDFLARE_API_TOKEN: '',
+      },
+    },
+    docsUrl: 'https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/',
     isOfficial: true,
   },
   // Google Services

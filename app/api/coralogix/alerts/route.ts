@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadMCPTools, executeMCPTool } from '@/lib/mcp/client';
-import type { CoralogixAlertsResponse } from '@/lib/coralogix/types';
+import type { CoralogixAlertsResponse, CoralogixAlert } from '@/lib/coralogix/types';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,13 +30,11 @@ export async function GET(request: Request) {
       'coralogix__query_alerts',
     ];
 
-    let result;
-    let foundTool = false;
+    let result: { success: boolean; data?: unknown; error?: string } | undefined;
 
     for (const toolName of alertsToolNames) {
       const tool = tools.find(t => t.name === toolName);
       if (tool) {
-        foundTool = true;
         result = await executeMCPTool(toolName, {
           filter: {
             status,
@@ -50,7 +48,7 @@ export async function GET(request: Request) {
       }
     }
 
-    if (!foundTool) {
+    if (!result) {
       // If no dedicated alerts tool, return empty response
       return NextResponse.json({
         alerts: [],
@@ -69,8 +67,10 @@ export async function GET(request: Request) {
     }
 
     // Transform the result to match the expected CoralogixAlertsResponse format
+    // MCP data is untyped, so we cast it to the expected format
+    const resultData = result.data as { alerts?: CoralogixAlert[] } | CoralogixAlert[];
     const response: CoralogixAlertsResponse = {
-      alerts: Array.isArray(result.data) ? result.data : result.data?.alerts || [],
+      alerts: Array.isArray(resultData) ? resultData : resultData?.alerts || [],
     };
 
     return NextResponse.json(response);

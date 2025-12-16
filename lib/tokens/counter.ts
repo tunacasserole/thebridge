@@ -143,3 +143,24 @@ export function estimateCost(inputTokens: number, outputTokens: number): number 
 
   return inputCost + outputCost;
 }
+
+/**
+ * Format token count with K/M suffix for readability
+ */
+export function formatTokenCount(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(1)}M`;
+  }
+  if (tokens >= 1_000) {
+    return `${(tokens / 1_000).toFixed(1)}K`;
+  }
+  return tokens.toString();
+}
+
+/**
+ * Calculate percentage of part relative to total
+ */
+export function calculatePercentage(part: number, total: number): number {
+  if (total === 0) return 0;
+  return Math.round((part / total) * 100);
+}

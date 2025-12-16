@@ -351,7 +351,7 @@ export class CacheAnalyticsTracker {
       report += '--- Top Cache Keys ---\n';
       for (const key of topKeys) {
         report += `${key.key}: ${key.hits} hits`;
-        if (key.tokensSaved > 0) {
+        if (key.tokensSaved && key.tokensSaved > 0) {
           report += ` (saved ${key.tokensSaved} tokens)`;
         }
         report += '\n';

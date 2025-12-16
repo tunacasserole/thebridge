@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadMCPTools, executeMCPTool } from '@/lib/mcp/client';
-import type { CoralogixAPMResponse } from '@/lib/coralogix/types';
+import type { CoralogixAPMResponse, CoralogixAPMService } from '@/lib/coralogix/types';
 
 export async function GET() {
   try {
@@ -33,8 +33,10 @@ export async function GET() {
     }
 
     // Transform the result to match the expected CoralogixAPMResponse format
+    // MCP data is untyped, so we cast it to the expected format
+    const resultData = result.data as { services?: CoralogixAPMService[] } | CoralogixAPMService[];
     const response: CoralogixAPMResponse = {
-      services: Array.isArray(result.data) ? result.data : result.data?.services || [],
+      services: Array.isArray(resultData) ? resultData : resultData?.services || [],
     };
 
     return NextResponse.json(response);

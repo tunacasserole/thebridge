@@ -190,6 +190,9 @@ export const QUERY_KEYWORDS: Record<ToolCategory, string[]> = {
   [ToolCategory.SLACK]: [
     'slack', 'message', 'channel', 'dm', 'notify',
   ],
+  [ToolCategory.NOTIFICATION]: [
+    'notification', 'notify', 'send', 'alert', 'broadcast',
+  ],
   [ToolCategory.WIKI]: [
     'wiki', 'documentation', 'docs', 'knowledge base',
   ],
@@ -210,6 +213,9 @@ export const QUERY_KEYWORDS: Record<ToolCategory, string[]> = {
   ],
   [ToolCategory.SEARCH]: [
     'search', 'find', 'query', 'list', 'get', 'lookup',
+  ],
+  [ToolCategory.UTILITY]: [
+    'utility', 'tool', 'helper', 'misc', 'general',
   ],
 };
 

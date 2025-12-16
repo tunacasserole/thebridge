@@ -205,8 +205,9 @@ export async function filterTools(
 
   // Apply minimum usage threshold
   if (options.minUsageThreshold !== undefined && !options.includeRareTools) {
+    const threshold = options.minUsageThreshold;
     filtered = filtered.filter(
-      ({ metadata }) => (metadata.usageCount || 0) >= options.minUsageThreshold
+      ({ metadata }) => (metadata.usageCount || 0) >= threshold
     );
   }
 

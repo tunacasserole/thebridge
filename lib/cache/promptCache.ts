@@ -213,7 +213,7 @@ export function createCachedRequestConfig(params: {
   maxTokens?: number;
   temperature?: number;
   thinking?: Anthropic.Messages.MessageCreateParams['thinking'];
-}): Anthropic.Messages.MessageCreateParams {
+}): Anthropic.Messages.MessageCreateParamsNonStreaming {
   return {
     model: params.model,
     max_tokens: params.maxTokens || 8192,
@@ -222,5 +222,6 @@ export function createCachedRequestConfig(params: {
     tools: createCachedTools(params.tools),
     messages: createCachedMessages(params.messages),
     thinking: params.thinking,
+    stream: false,
   };
 }
