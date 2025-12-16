@@ -9,7 +9,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
-import { ALL_TOOLS, executeTool } from '@/lib/tools';
+import { ALL_TOOLS, TOOL_CATEGORIES, executeTool } from '@/lib/tools';
 import { getAuthenticatedUser, getUserApiKey } from '@/lib/auth';
 
 // Get Anthropic client (creates per-request for user API key support)
@@ -130,9 +130,23 @@ export async function POST(request: NextRequest) {
       content: userMessageContent,
     });
 
+    // Expand category IDs (e.g., 'jira') to actual tool names (e.g., 'jira_create_story')
+    // This maps sidebar MCP toggles to their corresponding tools
+    const expandedToolNames = new Set<string>();
+    for (const id of enabledTools) {
+      // Check if this is a category ID that maps to multiple tools
+      const categoryTools = TOOL_CATEGORIES[id as keyof typeof TOOL_CATEGORIES];
+      if (categoryTools) {
+        categoryTools.forEach((toolName: string) => expandedToolNames.add(toolName));
+      } else {
+        // Direct tool name
+        expandedToolNames.add(id);
+      }
+    }
+
     // Filter tools if specific ones enabled
-    const tools = enabledTools.length > 0
-      ? ALL_TOOLS.filter((t) => enabledTools.includes(t.name))
+    const tools = expandedToolNames.size > 0
+      ? ALL_TOOLS.filter((t) => expandedToolNames.has(t.name))
       : ALL_TOOLS;
 
     console.log('[Chat] Starting agent loop with model:', modelId);
