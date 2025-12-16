@@ -17,12 +17,10 @@ function getDefaultPreferences(): UserRolePreferences {
     currentRole: DEFAULT_ROLE,
     favoriteAgents: {
       sre: [],
-      commander: [],
       pm: [],
     },
     recentAgents: {
       sre: [],
-      commander: [],
       pm: [],
     },
     roleViewPreferences: {
@@ -30,10 +28,6 @@ function getDefaultPreferences(): UserRolePreferences {
         dashboardLayout: 'detailed',
         agentFloorLayout: 'cards',
         agentFloorSortBy: 'category',
-      },
-      commander: {
-        agentFloorLayout: 'cards',
-        agentFloorSortBy: 'recent',
       },
       pm: {
         dashboardLayout: 'detailed',
@@ -43,7 +37,6 @@ function getDefaultPreferences(): UserRolePreferences {
     },
     roleThemes: {
       sre: 'sre-emerald', // Default emerald theme for SRE
-      commander: 'commander-amber', // Default amber theme for Commander
       pm: 'pm-violet', // Default violet theme for PM
     },
     lastUpdated: new Date().toISOString(),

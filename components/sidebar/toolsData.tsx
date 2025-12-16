@@ -451,7 +451,7 @@ export const agents: AgentDefinition[] = [
     name: 'General',
     description: 'Multi-purpose assistant',
     accentColor: '#6366f1', // Indigo
-    roles: ['sre', 'commander'],
+    roles: ['sre'],
     icon: (
       <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="3" />
@@ -464,7 +464,7 @@ export const agents: AgentDefinition[] = [
     name: 'Incident',
     description: 'Root cause analysis',
     accentColor: '#f59e0b', // Amber
-    roles: ['sre', 'commander'],
+    roles: ['sre'],
     icon: (
       <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -478,7 +478,7 @@ export const agents: AgentDefinition[] = [
     name: 'Quota',
     description: 'Cost optimization',
     accentColor: '#10b981', // Emerald
-    roles: ['sre', 'commander'],
+    roles: ['sre'],
     icon: (
       <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />

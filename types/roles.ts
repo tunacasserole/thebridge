@@ -8,7 +8,7 @@
 /**
  * Available user roles in TheBridge
  */
-export type UserRole = 'sre' | 'commander' | 'pm';
+export type UserRole = 'sre' | 'pm';
 
 /**
  * Role metadata and configuration

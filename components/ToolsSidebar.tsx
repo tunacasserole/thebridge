@@ -87,6 +87,212 @@ function ToggleSwitch({ enabled, onToggle }: ToggleSwitchProps) {
   );
 }
 
+// New Relic Entity type
+interface NewRelicEntity {
+  guid: string;
+  name: string;
+  entityType: string;
+  domain: string;
+  alertSeverity?: string;
+}
+
+// New Relic Entity Selector Component
+interface NewRelicEntitySelectorProps {
+  selectedEntity: NewRelicEntity | null;
+  onSelectEntity: (entity: NewRelicEntity | null) => void;
+}
+
+function NewRelicEntitySelector({ selectedEntity, onSelectEntity }: NewRelicEntitySelectorProps) {
+  const [entities, setEntities] = useState<NewRelicEntity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch entities from API
+  useEffect(() => {
+    async function fetchEntities() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/newrelic/entities');
+        if (!response.ok) {
+          if (response.status === 503) {
+            setError('New Relic not configured');
+            return;
+          }
+          throw new Error('Failed to fetch entities');
+        }
+        const data = await response.json();
+        if (data.success && data.data) {
+          setEntities(data.data);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load entities');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEntities();
+  }, []);
+
+  // Filter entities by search query
+  const filteredEntities = entities.filter(entity =>
+    entity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entity.entityType.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Group entities by type
+  const groupedEntities = filteredEntities.reduce((acc, entity) => {
+    const type = entity.entityType || 'Other';
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(entity);
+    return acc;
+  }, {} as Record<string, NewRelicEntity[]>);
+
+  const getAlertColor = (severity?: string) => {
+    switch (severity) {
+      case 'CRITICAL': return '#ef4444';
+      case 'WARNING': return '#f59e0b';
+      case 'NOT_ALERTING': return '#10b981';
+      default: return '#6b7280';
+    }
+  };
+
+  return (
+    <div className="mb-4">
+      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)] mb-2 block">
+        Select Service / Entity
+      </label>
+
+      <div className="relative">
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          disabled={loading || !!error}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-[var(--md-surface-container-high)] border border-[var(--md-outline-variant)] hover:border-[var(--md-outline)] transition-colors disabled:opacity-50"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {loading ? (
+              <span className="text-sm text-[var(--md-on-surface-variant)]">Loading entities...</span>
+            ) : error ? (
+              <span className="text-sm text-[var(--md-error)]">{error}</span>
+            ) : selectedEntity ? (
+              <>
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: getAlertColor(selectedEntity.alertSeverity) }}
+                />
+                <span className="text-sm text-[var(--md-on-surface)] truncate">{selectedEntity.name}</span>
+                <span className="text-xs text-[var(--md-on-surface-variant)] flex-shrink-0">({selectedEntity.entityType})</span>
+              </>
+            ) : (
+              <span className="text-sm text-[var(--md-on-surface-variant)]">
+                {entities.length > 0 ? 'Select an entity...' : 'No entities found'}
+              </span>
+            )}
+          </div>
+          <svg
+            viewBox="0 0 24 24"
+            className={`w-4 h-4 text-[var(--md-on-surface-variant)] flex-shrink-0 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        {/* Dropdown */}
+        {isDropdownOpen && entities.length > 0 && (
+          <div
+            className="absolute top-full left-0 right-0 mt-1 z-50 bg-[var(--md-surface-container)] border border-[var(--md-outline-variant)] rounded-lg shadow-xl overflow-hidden"
+            style={{ maxHeight: '300px' }}
+          >
+            {/* Search Input */}
+            <div className="p-2 border-b border-[var(--md-outline-variant)]">
+              <input
+                type="text"
+                placeholder="Search entities..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm rounded-md bg-[var(--md-surface-container-high)] text-[var(--md-on-surface)] placeholder-[var(--md-on-surface-variant)] border-none focus:outline-none focus:ring-1 focus:ring-[var(--md-accent)]"
+              />
+            </div>
+
+            {/* Entity List */}
+            <div className="overflow-y-auto" style={{ maxHeight: '240px' }}>
+              {/* Clear selection option */}
+              {selectedEntity && (
+                <button
+                  onClick={() => {
+                    onSelectEntity(null);
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-container-high)] transition-colors border-b border-[var(--md-outline-variant)]"
+                >
+                  Clear selection
+                </button>
+              )}
+
+              {Object.entries(groupedEntities).map(([type, typeEntities]) => (
+                <div key={type}>
+                  <div className="px-3 py-1.5 text-xs font-semibold text-[var(--md-on-surface-variant)] bg-[var(--md-surface-container-high)] sticky top-0">
+                    {type} ({typeEntities.length})
+                  </div>
+                  {typeEntities.map((entity) => (
+                    <button
+                      key={entity.guid}
+                      onClick={() => {
+                        onSelectEntity(entity);
+                        setIsDropdownOpen(false);
+                        setSearchQuery('');
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[var(--md-surface-container-high)] transition-colors ${
+                        selectedEntity?.guid === entity.guid ? 'bg-[var(--md-surface-container-highest)]' : ''
+                      }`}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getAlertColor(entity.alertSeverity) }}
+                      />
+                      <span className="text-sm text-[var(--md-on-surface)] truncate flex-1">{entity.name}</span>
+                      {selectedEntity?.guid === entity.guid && (
+                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--md-accent)]" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ))}
+
+              {filteredEntities.length === 0 && searchQuery && (
+                <div className="px-3 py-4 text-sm text-center text-[var(--md-on-surface-variant)]">
+                  No entities match &quot;{searchQuery}&quot;
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Selected entity details */}
+      {selectedEntity && (
+        <div className="mt-2 p-2 rounded-lg bg-[var(--md-surface-container-high)] text-xs">
+          <div className="flex items-center gap-2 text-[var(--md-on-surface-variant)]">
+            <span className="font-medium">Domain:</span>
+            <span>{selectedEntity.domain}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[var(--md-on-surface-variant)] mt-1">
+            <span className="font-medium">GUID:</span>
+            <span className="font-mono truncate">{selectedEntity.guid}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // MCP Detail Panel Component
 interface McpDetailPanelProps {
   mcpId: string;
@@ -99,6 +305,8 @@ interface McpDetailPanelProps {
 
 function McpDetailPanel({ mcpId, mcpName, mcpDescription, isEnabled, isOpen, onClose }: McpDetailPanelProps) {
   const tools = MCP_TOOLS[mcpId] || [];
+  const [selectedEntity, setSelectedEntity] = useState<NewRelicEntity | null>(null);
+  const isNewRelic = mcpId === 'newrelic';
 
   return (
     <>
@@ -161,9 +369,18 @@ function McpDetailPanel({ mcpId, mcpName, mcpDescription, isEnabled, isOpen, onC
           </div>
         </div>
 
-        {/* Tools List */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
+            {/* New Relic Entity Selector */}
+            {isNewRelic && (
+              <NewRelicEntitySelector
+                selectedEntity={selectedEntity}
+                onSelectEntity={setSelectedEntity}
+              />
+            )}
+
+            {/* Tools List */}
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)] mb-3">
               Available Tools ({tools.length})
             </h3>
