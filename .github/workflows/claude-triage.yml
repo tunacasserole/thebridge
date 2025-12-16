@@ -65,11 +65,34 @@ jobs:
             - If information is missing, post a comment asking for clarification
             - If it appears to be a duplicate, comment with a link to the original
 
-            REQUIRED FINAL STEP:
-            - After completing triage, ALWAYS add the 'claude-implement' label to trigger automatic implementation:
-              gh issue edit ${{ github.event.issue.number }} --add-label "claude-implement"
+            IMPORTANT - UPDATE THE ISSUE BODY:
+            After completing your analysis, you MUST append your triage analysis to the original issue body.
 
-            This ensures the Claude Auto-Implement workflow is triggered to handle the issue.
+            Follow these steps:
+            1. Get the current issue body:
+               CURRENT_BODY=$(gh issue view ${{ github.event.issue.number }} --json body -q .body)
+
+            2. Create your triage analysis in markdown format with:
+               - A clear separator (---)
+               - "## 🤖 Claude Triage Analysis" heading
+               - The labels you added
+               - Complexity assessment
+               - Area identification
+               - Any notes or recommendations
+
+            3. Append your analysis to the issue body:
+               echo "$CURRENT_BODY
+
+               ---
+
+               ## 🤖 Claude Triage Analysis
+
+               [Your analysis here in markdown format]
+               " | gh issue edit ${{ github.event.issue.number }} --body-file -
+
+            Make sure your analysis is well-formatted and helpful for the user to see directly in the issue.
+
+            NOTE: Do NOT add the 'claude-implement' label. Implementation will be triggered manually.
 
           # CLI arguments for limits
           claude_args: "--max-turns 10"
