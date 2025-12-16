@@ -1,7 +1,7 @@
 name: Issue
 description: Create a new issue
 title: "[Issue]: "
-labels: ["claude-triage"]
+labels: ["claude-triage", "claude-implement"]
 body:
   - type: markdown
     attributes:
