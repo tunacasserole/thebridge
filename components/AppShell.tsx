@@ -25,7 +25,7 @@ export function AppShell({ children }: AppShellProps) {
       <>
         <main
           id="main-content"
-          className="flex-1 flex flex-col min-h-0 overflow-hidden"
+          className="flex-1 flex flex-col min-h-0 overflow-y-auto"
           role="main"
         >
           {children}
@@ -39,7 +39,7 @@ export function AppShell({ children }: AppShellProps) {
     return (
       <main
         id="main-content"
-        className="flex-1 flex flex-col min-h-0 overflow-hidden"
+        className="flex-1 flex flex-col min-h-0 overflow-y-auto"
         role="main"
       >
         {children}
@@ -54,7 +54,7 @@ export function AppShell({ children }: AppShellProps) {
       <Header />
       <main
         id="main-content"
-        className="flex-1 flex flex-col min-h-0 overflow-hidden"
+        className="flex-1 flex flex-col min-h-0 overflow-y-auto"
         role="main"
       >
         {children}
