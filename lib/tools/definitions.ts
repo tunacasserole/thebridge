@@ -100,6 +100,235 @@ export const githubGetPRs: ToolDefinition = {
 };
 
 /**
+ * GitHub Code Tools - Read/Write Code in Repositories
+ */
+export const githubReadFile: ToolDefinition = {
+  name: 'github_read_file',
+  description: `Read the contents of a file from a GitHub repository. Use this to:
+- View source code files
+- Read configuration files
+- Check existing implementations before making changes
+- Understand code structure`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name (e.g., "my-repo")',
+      },
+      path: {
+        type: 'string',
+        description: 'File path in the repository (e.g., "src/index.ts")',
+      },
+      branch: {
+        type: 'string',
+        description: 'Branch name. Defaults to main branch if not specified.',
+      },
+    },
+    required: ['repository', 'path'],
+  },
+};
+
+export const githubWriteFile: ToolDefinition = {
+  name: 'github_write_file',
+  description: `Create or update a file in a GitHub repository. This commits directly to the specified branch. Use this to:
+- Create new source files
+- Update existing code
+- Add configuration files
+- Write documentation`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name (e.g., "my-repo")',
+      },
+      path: {
+        type: 'string',
+        description: 'File path in the repository (e.g., "src/newfile.ts")',
+      },
+      content: {
+        type: 'string',
+        description: 'The full content to write to the file',
+      },
+      message: {
+        type: 'string',
+        description: 'Commit message describing the change',
+      },
+      branch: {
+        type: 'string',
+        description: 'Branch to commit to. Defaults to main branch.',
+      },
+    },
+    required: ['repository', 'path', 'content', 'message'],
+  },
+};
+
+export const githubDeleteFile: ToolDefinition = {
+  name: 'github_delete_file',
+  description: `Delete a file from a GitHub repository. This commits the deletion to the specified branch.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+      path: {
+        type: 'string',
+        description: 'File path to delete',
+      },
+      message: {
+        type: 'string',
+        description: 'Commit message for the deletion',
+      },
+      branch: {
+        type: 'string',
+        description: 'Branch to commit to. Defaults to main branch.',
+      },
+    },
+    required: ['repository', 'path', 'message'],
+  },
+};
+
+export const githubListDirectory: ToolDefinition = {
+  name: 'github_list_directory',
+  description: `List the contents of a directory in a GitHub repository. Use this to:
+- Explore repository structure
+- Find files to read or modify
+- Understand project layout`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+      path: {
+        type: 'string',
+        description: 'Directory path. Use empty string or "/" for root.',
+      },
+      branch: {
+        type: 'string',
+        description: 'Branch name. Defaults to main branch.',
+      },
+    },
+    required: ['repository'],
+  },
+};
+
+export const githubCreateBranch: ToolDefinition = {
+  name: 'github_create_branch',
+  description: `Create a new branch in a GitHub repository. Use this before making changes if you want to work on a feature branch.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+      branch_name: {
+        type: 'string',
+        description: 'Name for the new branch',
+      },
+      from_branch: {
+        type: 'string',
+        description: 'Source branch to create from. Defaults to "main".',
+      },
+    },
+    required: ['repository', 'branch_name'],
+  },
+};
+
+export const githubListBranches: ToolDefinition = {
+  name: 'github_list_branches',
+  description: `List all branches in a GitHub repository.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+    },
+    required: ['repository'],
+  },
+};
+
+export const githubSearchCode: ToolDefinition = {
+  name: 'github_search_code',
+  description: `Search for code within a GitHub repository. Use this to find specific functions, classes, or patterns.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+      query: {
+        type: 'string',
+        description: 'Search query (function names, class names, code patterns)',
+      },
+    },
+    required: ['repository', 'query'],
+  },
+};
+
+export const githubGetTree: ToolDefinition = {
+  name: 'github_get_tree',
+  description: `Get the full file tree of a GitHub repository. Returns all files and directories. Use this to understand the complete project structure.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+      branch: {
+        type: 'string',
+        description: 'Branch name. Defaults to "main".',
+      },
+    },
+    required: ['repository'],
+  },
+};
+
+export const githubCreatePR: ToolDefinition = {
+  name: 'github_create_pr',
+  description: `Create a pull request to merge changes from one branch to another. Use this after making changes on a feature branch.`,
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      repository: {
+        type: 'string',
+        description: 'Repository name',
+      },
+      title: {
+        type: 'string',
+        description: 'PR title',
+      },
+      head: {
+        type: 'string',
+        description: 'Source branch (the branch with your changes)',
+      },
+      base: {
+        type: 'string',
+        description: 'Target branch (usually "main")',
+      },
+      body: {
+        type: 'string',
+        description: 'PR description/body',
+      },
+      draft: {
+        type: 'boolean',
+        description: 'Create as draft PR. Default: false',
+      },
+    },
+    required: ['repository', 'title', 'head', 'base'],
+  },
+};
+
+/**
  * Jira Tools - Issue Management
  */
 export const jiraSearchIssues: ToolDefinition = {
@@ -333,6 +562,16 @@ export const ALL_TOOLS: ToolDefinition[] = [
   rootlyPostComment,
   // GitHub - Repository Management
   githubGetPRs,
+  // GitHub - Code Operations
+  githubReadFile,
+  githubWriteFile,
+  githubDeleteFile,
+  githubListDirectory,
+  githubCreateBranch,
+  githubListBranches,
+  githubSearchCode,
+  githubGetTree,
+  githubCreatePR,
   // Jira - Issue Management
   jiraSearchIssues,
   jiraGetIssue,
@@ -356,6 +595,17 @@ export const ALL_TOOLS: ToolDefinition[] = [
 export const TOOL_CATEGORIES = {
   incidents: ['rootly_get_incidents', 'rootly_update_incident', 'rootly_post_comment'],
   github: ['github_get_prs'],
+  code: [
+    'github_read_file',
+    'github_write_file',
+    'github_delete_file',
+    'github_list_directory',
+    'github_create_branch',
+    'github_list_branches',
+    'github_search_code',
+    'github_get_tree',
+    'github_create_pr',
+  ],
   jira: ['jira_search_issues', 'jira_get_issue', 'jira_add_comment', 'jira_create_story'],
   observability: ['newrelic_get_applications'],
   analytics: ['metabase_list_databases', 'metabase_execute_query', 'metabase_search_questions', 'metabase_run_question'],

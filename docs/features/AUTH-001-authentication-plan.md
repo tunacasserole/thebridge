@@ -452,11 +452,185 @@ For a production multi-user web application:
 
 ---
 
+## Recommended Auth Provider: Auth.js (NextAuth v5)
+
+For TheBridge on Vercel + local development, **Auth.js (NextAuth v5)** is the recommended choice:
+
+### Why Auth.js?
+
+| Factor | Auth.js | Clerk | Custom JWT |
+|--------|---------|-------|------------|
+| **Vercel Integration** | Native, first-class | Good | Manual |
+| **Local Dev** | Works out-of-box | Requires tunnel | Full control |
+| **Cost** | Free/OSS | $25/mo+ | Free |
+| **Setup Complexity** | Low | Very Low | High |
+| **Database Integration** | Prisma adapter built-in | External | Manual |
+| **Self-hosted** | Yes | No | Yes |
+
+### Key Advantages
+
+1. **Zero Cost**: Open source, no usage limits
+2. **Vercel Native**: Created by Vercel team, optimized for their platform
+3. **Prisma Adapter**: Direct integration with existing Prisma schema
+4. **Local Dev**: Works without tunnels or external services
+5. **OAuth Providers**: GitHub, Google, etc. with minimal config
+6. **Credentials Provider**: Email/password if needed
+
+### Implementation Steps
+
+#### Step 1: Install Dependencies
+```bash
+npm install next-auth@beta @auth/prisma-adapter
+```
+
+#### Step 2: Add Prisma Models
+```prisma
+// Add to prisma/schema.prisma
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  // TheBridge-specific fields
+  anthropicApiKey String?  @db.Text  // Encrypted
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+```
+
+#### Step 3: Configure Auth.js
+```typescript
+// auth.ts (root)
+import NextAuth from "next-auth"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import GitHub from "next-auth/providers/github"
+import Google from "next-auth/providers/google"
+import { prisma } from "@/lib/prisma"
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    GitHub({
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
+    }),
+    Google({
+      clientId: process.env.GOOGLE_ID,
+      clientSecret: process.env.GOOGLE_SECRET,
+    }),
+  ],
+  callbacks: {
+    session: ({ session, user }) => ({
+      ...session,
+      user: { ...session.user, id: user.id },
+    }),
+  },
+})
+```
+
+#### Step 4: Add API Route
+```typescript
+// app/api/auth/[...nextauth]/route.ts
+import { handlers } from "@/auth"
+export const { GET, POST } = handlers
+```
+
+#### Step 5: Environment Variables
+```env
+# .env.local (local development)
+AUTH_SECRET=your-random-secret-here  # npx auth secret
+GITHUB_ID=your-github-oauth-app-id
+GITHUB_SECRET=your-github-oauth-app-secret
+
+# Vercel automatically sets AUTH_URL in production
+# For local dev, it defaults to http://localhost:3000
+```
+
+### Vercel Deployment
+
+1. Add environment variables in Vercel dashboard
+2. Auth.js automatically detects Vercel environment
+3. OAuth callbacks work with Vercel's preview/production URLs
+
+### Local Development
+
+1. Create GitHub OAuth App with callback: `http://localhost:3000/api/auth/callback/github`
+2. Set env vars in `.env.local`
+3. Run `npm run dev` - auth works immediately
+
+---
+
+## Implementation Checklist
+
+### Phase 1: Basic Auth (Estimated: 2-3 hours)
+- [ ] Install Auth.js and Prisma adapter
+- [ ] Add User/Account/Session models to Prisma schema
+- [ ] Run migration: `npx prisma migrate dev`
+- [ ] Configure auth.ts with GitHub provider
+- [ ] Add API route handler
+- [ ] Add sign-in/sign-out buttons to UI
+- [ ] Protect API routes with `auth()` middleware
+
+### Phase 2: API Key Management (Estimated: 3-4 hours)
+- [ ] Create `lib/encryption.ts` for API key encryption
+- [ ] Add settings page for API key input
+- [ ] Store encrypted API key in User model
+- [ ] Modify chat routes to use user's API key
+- [ ] Add error handling for missing API key
+
+### Phase 3: Polish (Estimated: 2-3 hours)
+- [ ] Add Google OAuth provider
+- [ ] Create user profile/settings UI
+- [ ] Add session management UI
+- [ ] Implement rate limiting per user
+- [ ] Add usage logging
+
+---
+
 ## Next Steps
 
 1. [ ] Verify `ANTHROPIC_API_KEY` is correctly set in production
 2. [ ] Modify env injection to be explicit (not spread process.env)
 3. [ ] Test with clean environment (no OAuth tokens)
-4. [ ] Plan user authentication implementation
-5. [ ] Design API key management UI for users
-6. [ ] Implement encrypted API key storage
+4. [ ] **Install Auth.js and configure GitHub OAuth**
+5. [ ] **Add Prisma models and run migration**
+6. [ ] Design API key management UI for users
+7. [ ] Implement encrypted API key storage

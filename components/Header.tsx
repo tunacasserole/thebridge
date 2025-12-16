@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/theme';
 import RoleSwitcher from './header/RoleSwitcher';
 import GitHubIssueButton from './header/GitHubIssueButton';
 import HeaderLauncherButton from './dashboard/HeaderLauncherButton';
+import { UserMenu } from './auth';
 
 /**
  * Material Design 3 compliant top app bar
@@ -90,17 +91,7 @@ export default function Header() {
           <GitHubIssueButton />
           <RoleSwitcher variant="chip" size="small" />
           <ThemeSwitch />
-          <div
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center
-              shadow-md transition-transform hover:scale-105 active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, var(--md-accent), var(--md-accent-dark))',
-            }}
-          >
-            <span className="text-xs sm:text-sm font-semibold text-md-on-primary">
-              AH
-            </span>
-          </div>
+          <UserMenu />
         </div>
       </div>
     </header>
