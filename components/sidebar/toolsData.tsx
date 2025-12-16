@@ -4,7 +4,7 @@
  */
 
 import type { ToolDefinition, AgentDefinition } from './types';
-import { RootlyLogo, CoralogixLogo, NewRelicLogo, KubernetesLogo, MetabaseLogo, PrometheusLogo } from '../logos';
+import { RootlyLogo, CoralogixLogo, NewRelicLogo, KubernetesLogo, MetabaseLogo, PrometheusLogo, CloudflareLogo } from '../logos';
 
 // MCP Tools data - available tools for each MCP integration
 export const MCP_TOOLS: Record<string, { name: string; description: string }[]> = {
@@ -118,6 +118,18 @@ export const MCP_TOOLS: Record<string, { name: string; description: string }[]> 
     { name: 'get_targets', description: 'Get scrape targets' },
     { name: 'get_alerts', description: 'Get active alerts' },
     { name: 'get_rules', description: 'Get alerting rules' },
+  ],
+  cloudflare: [
+    { name: 'list_zones', description: 'List all DNS zones' },
+    { name: 'get_zone', description: 'Get zone details' },
+    { name: 'list_dns_records', description: 'List DNS records for a zone' },
+    { name: 'create_dns_record', description: 'Create a new DNS record' },
+    { name: 'update_dns_record', description: 'Update a DNS record' },
+    { name: 'delete_dns_record', description: 'Delete a DNS record' },
+    { name: 'get_analytics', description: 'Get zone analytics' },
+    { name: 'purge_cache', description: 'Purge cache for a zone' },
+    { name: 'list_workers', description: 'List Workers scripts' },
+    { name: 'get_firewall_rules', description: 'Get firewall rules' },
   ],
   salesforce: [
     { name: 'query_records', description: 'Query Salesforce records with SOQL' },
@@ -318,6 +330,12 @@ export const CORE_TOOL_IDS = coreTools.map(t => t.id);
 
 // Observability MCP integrations
 export const observabilityMcps: ToolDefinition[] = [
+  {
+    id: 'cloudflare',
+    name: 'Cloudflare',
+    description: 'CDN & DNS management',
+    icon: <CloudflareLogo width={20} height={20} />,
+  },
   {
     id: 'coralogix',
     name: 'Coralogix',
