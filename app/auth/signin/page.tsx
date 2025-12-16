@@ -49,7 +49,25 @@ function SignInContent() {
 
       {/* Provider Buttons */}
       <div className="space-y-3">
-        {providers ? (
+        {providers === null ? (
+          // Loading skeleton
+          <div className="space-y-3">
+            <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
+            <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
+          </div>
+        ) : Object.keys(providers).length === 0 ? (
+          // No providers configured
+          <div className="text-center py-4">
+            <Icon name="warning" size={32} className="text-md-error mx-auto mb-3" />
+            <p className="text-sm text-md-on-surface-variant mb-3">
+              No authentication providers configured.
+            </p>
+            <p className="text-xs text-md-on-surface-variant">
+              Add OAuth credentials (GITHUB_ID, GITHUB_SECRET or GOOGLE_ID, GOOGLE_SECRET)
+              to your environment variables.
+            </p>
+          </div>
+        ) : (
           Object.values(providers).map((provider) => (
             <button
               key={provider.id}
@@ -70,12 +88,6 @@ function SignInContent() {
               Continue with {provider.name}
             </button>
           ))
-        ) : (
-          // Loading skeleton
-          <div className="space-y-3">
-            <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
-            <div className="h-12 rounded-xl bg-md-surface-container-high animate-pulse" />
-          </div>
         )}
       </div>
     </>
