@@ -7,6 +7,7 @@ import { RoleProvider } from "@/contexts/RoleContext";
 import { MultiAgentProvider } from "@/contexts/MultiAgentContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { SessionProvider } from "@/components/auth";
+import { LocalBridgeProvider } from "@/contexts/LocalBridgeContext";
 
 // Material Symbols font URL
 const materialSymbolsUrl = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap";
@@ -47,9 +48,11 @@ export default function RootLayout({
             <RoleProvider>
               <MultiAgentProvider>
                 <DashboardProvider>
-                  <AppShell>
-                    {children}
-                  </AppShell>
+                  <LocalBridgeProvider>
+                    <AppShell>
+                      {children}
+                    </AppShell>
+                  </LocalBridgeProvider>
                 </DashboardProvider>
               </MultiAgentProvider>
             </RoleProvider>

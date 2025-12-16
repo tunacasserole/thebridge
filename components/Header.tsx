@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/theme';
 import RoleSwitcher from './header/RoleSwitcher';
 import GitHubIssueButton from './header/GitHubIssueButton';
 import HeaderLauncherButton from './dashboard/HeaderLauncherButton';
+import LocalBridgeStatus from './header/LocalBridgeStatus';
 import { UserMenu } from './auth';
 
 /**
@@ -88,6 +89,7 @@ export default function Header() {
 
         {/* Status & Theme Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <LocalBridgeStatus />
           <GitHubIssueButton />
           <RoleSwitcher variant="chip" size="small" />
           <ThemeSwitch />
