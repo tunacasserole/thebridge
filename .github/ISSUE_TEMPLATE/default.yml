@@ -1,7 +1,7 @@
 name: Issue
 description: Create a new issue
 title: "[Issue]: "
-labels: []
+labels: ["claude-triage"]
 body:
   - type: markdown
     attributes:
@@ -14,17 +14,6 @@ body:
       label: Description
       description: Please provide a detailed description of the issue
       placeholder: Describe the issue...
-    validations:
-      required: true
-
-  - type: dropdown
-    id: labels
-    attributes:
-      label: Labels
-      description: Select the appropriate label for this issue
-      options:
-        - claude-triage
-        - claude-implement
     validations:
       required: true
 
