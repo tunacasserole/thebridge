@@ -13,6 +13,7 @@ export async function GET() {
     const servers = await prisma.mCPServerDefinition.findMany({
       where: { isEnabled: true },
       orderBy: [
+        { category: 'asc' },
         { isOfficial: 'desc' },
         { name: 'asc' },
       ],
@@ -22,6 +23,7 @@ export async function GET() {
         name: true,
         description: true,
         icon: true,
+        category: true,
         transportType: true,
         configTemplate: true,
         docsUrl: true,
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const { slug, name, description, icon, transportType, configTemplate, docsUrl, isOfficial } = body;
+    const { slug, name, description, icon, category, transportType, configTemplate, docsUrl, isOfficial } = body;
 
     if (!slug || !name || !configTemplate) {
       return NextResponse.json(
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
         name,
         description,
         icon,
+        category: category || 'observability',
         transportType: transportType || 'sse',
         configTemplate: JSON.stringify(configTemplate),
         docsUrl,

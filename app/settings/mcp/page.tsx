@@ -10,6 +10,7 @@ interface MCPServer {
   name: string;
   description: string | null;
   icon: string | null;
+  category: string;
   transportType: string;
   configTemplate: {
     command?: string;
@@ -22,6 +23,35 @@ interface MCPServer {
   docsUrl: string | null;
   isOfficial: boolean;
 }
+
+// Category metadata for display
+const CATEGORY_INFO: Record<string, { label: string; icon: string; description: string }> = {
+  observability: {
+    label: 'Observability',
+    icon: 'monitoring',
+    description: 'Logs, metrics, APM, and incident management',
+  },
+  infrastructure: {
+    label: 'Infrastructure',
+    icon: 'cloud',
+    description: 'Container orchestration, CDN, and cloud infrastructure',
+  },
+  productivity: {
+    label: 'Productivity',
+    icon: 'task_alt',
+    description: 'Project tracking, communication, and collaboration',
+  },
+  data: {
+    label: 'Data & Analytics',
+    icon: 'bar_chart',
+    description: 'Data warehouses, BI tools, and integrations',
+  },
+  devops: {
+    label: 'DevOps',
+    icon: 'rocket_launch',
+    description: 'CI/CD, deployment, and developer tools',
+  },
+};
 
 interface UserConfig {
   id: string;
@@ -175,8 +205,17 @@ export default function MCPSettingsPage() {
   }
 
   // Group servers by category
-  const officialServers = servers.filter(s => s.isOfficial);
-  const communityServers = servers.filter(s => !s.isOfficial);
+  const serversByCategory = servers.reduce((acc, server) => {
+    const category = server.category || 'observability';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(server);
+    return acc;
+  }, {} as Record<string, MCPServer[]>);
+
+  // Define category order
+  const categoryOrder = ['infrastructure', 'observability', 'productivity', 'data', 'devops'];
 
   return (
     <div className="min-h-screen bg-[var(--md-surface)]">
@@ -191,61 +230,51 @@ export default function MCPSettingsPage() {
           </p>
         </div>
 
-        {/* Official Servers */}
-        {officialServers.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-[var(--md-on-surface)] mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-[var(--md-primary)]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-              Official Servers
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {officialServers.map(server => (
-                <MCPServerCard
-                  key={server.id}
-                  server={server}
-                  userConfig={getUserConfig(server.id)}
-                  onConfigUpdate={handleConfigUpdate}
-                  onConfigDelete={handleConfigDelete}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Render servers by category */}
+        {categoryOrder.map(category => {
+          const categoryServers = serversByCategory[category];
+          if (!categoryServers || categoryServers.length === 0) return null;
 
-        {/* Community Servers */}
-        {communityServers.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold text-[var(--md-on-surface)] mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-[var(--md-tertiary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-              </svg>
-              Community Servers
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {communityServers.map(server => (
-                <MCPServerCard
-                  key={server.id}
-                  server={server}
-                  userConfig={getUserConfig(server.id)}
-                  onConfigUpdate={handleConfigUpdate}
-                  onConfigDelete={handleConfigDelete}
-                />
-              ))}
+          const info = CATEGORY_INFO[category] || {
+            label: category.charAt(0).toUpperCase() + category.slice(1),
+            icon: 'extension',
+            description: '',
+          };
+
+          return (
+            <div key={category} className="mb-10">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-[var(--md-on-surface)] flex items-center gap-2">
+                  <span className="material-symbols-rounded text-[var(--md-primary)]">
+                    {info.icon}
+                  </span>
+                  {info.label}
+                </h2>
+                <p className="text-sm text-[var(--md-on-surface-variant)] mt-1">
+                  {info.description}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categoryServers.map(server => (
+                  <MCPServerCard
+                    key={server.id}
+                    server={server}
+                    userConfig={getUserConfig(server.id)}
+                    onConfigUpdate={handleConfigUpdate}
+                    onConfigDelete={handleConfigDelete}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })}
 
         {/* Empty state */}
         {servers.length === 0 && (
           <div className="text-center py-12">
-            <svg className="w-16 h-16 mx-auto text-[var(--md-on-surface-variant)] opacity-50 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-              <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
-            </svg>
+            <span className="material-symbols-rounded text-6xl text-[var(--md-on-surface-variant)] opacity-50 mb-4">
+              dns
+            </span>
             <h3 className="text-lg font-semibold text-[var(--md-on-surface)] mb-2">
               No MCP Servers Available
             </h3>
