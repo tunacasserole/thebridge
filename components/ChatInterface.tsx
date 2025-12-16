@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import QueryOptimizer from './QueryOptimizer';
 import ResponseModeSelector, { useResponseMode, type ResponseMode } from './ResponseModeSelector';
 import TokenUsageFeedback from './TokenUsageFeedback';
 import ConversationTokenCounter from './ConversationTokenCounter';
@@ -78,9 +77,6 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
 
   // Response mode
   const [responseMode, setResponseMode] = useResponseMode();
-
-  // Query optimization
-  const [showQueryOptimizer, setShowQueryOptimizer] = useState(false);
 
   // Wrapper to notify parent of loading state changes
   const setIsLoading = (loading: boolean) => {
@@ -723,19 +719,6 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         </div>
       </form>
 
-      {/* Query Optimizer */}
-      {showQueryOptimizer && input.length > 10 && (
-        <div className="mt-2">
-          <QueryOptimizer
-            query={input}
-            onApplySuggestion={(optimized) => {
-              setInput(optimized);
-              setShowQueryOptimizer(false);
-            }}
-          />
-        </div>
-      )}
-
       {/* Model, Extended Thinking, and Effort Toggles */}
       <div className="mt-2 flex justify-center items-center gap-4 flex-wrap">
         <ResponseModeSelector value={responseMode} onChange={setResponseMode} />
@@ -1026,7 +1009,6 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                       <div className="mt-3">
                         <TokenUsageFeedback
                           usage={message.tokenUsage}
-                          onOptimizeClick={() => setShowQueryOptimizer(true)}
                         />
                       </div>
                     )}
@@ -1169,7 +1151,6 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         <div className="fixed bottom-6 right-24 z-40">
           <TokenUsageFeedback
             usage={aggregateTokenUsage}
-            onOptimizeClick={() => setShowQueryOptimizer(true)}
           />
         </div>
       )}

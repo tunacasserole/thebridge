@@ -12,13 +12,11 @@ interface TokenUsageBreakdown {
 
 interface TokenUsageFeedbackProps {
   usage: TokenUsageBreakdown;
-  onOptimizeClick?: () => void;
   className?: string;
 }
 
 export default function TokenUsageFeedback({
   usage,
-  onOptimizeClick,
   className = '',
 }: TokenUsageFeedbackProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -72,19 +70,6 @@ export default function TokenUsageFeedback({
             <span className="text-[10px] font-medium">{usage.cacheHits} cached</span>
           </div>
         ) : null}
-
-        {/* Optimize button */}
-        {onOptimizeClick && (
-          <button
-            onClick={onOptimizeClick}
-            className="px-2 py-1 rounded-md text-xs font-medium bg-[var(--md-accent)] hover:bg-[var(--md-accent-dark)] text-[var(--md-on-accent)] transition-colors duration-200 flex items-center gap-1"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Optimize
-          </button>
-        )}
       </div>
 
       {/* Expanded breakdown */}
