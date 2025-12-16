@@ -816,6 +816,19 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         >
           {verbose ? '✓ Verbose' : 'Verbose'}
         </button>
+        <span className="text-[var(--md-outline-variant)]">|</span>
+        <button
+          type="button"
+          onClick={() => setShowQueryOptimizer(!showQueryOptimizer)}
+          className={`text-xs transition-colors duration-200 ${
+            showQueryOptimizer
+              ? 'text-[var(--md-accent)] hover:text-[var(--md-accent-dark)]'
+              : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
+          }`}
+          title="Show query optimization hints"
+        >
+          {showQueryOptimizer ? '✓ Optimize' : 'Optimize'}
+        </button>
       </div>
 
       {/* Token Budget Display */}
