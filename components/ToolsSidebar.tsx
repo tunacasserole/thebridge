@@ -99,9 +99,10 @@ interface NewRelicAccount {
 interface NewRelicAccountSelectorProps {
   selectedAccount: NewRelicAccount | null;
   onSelectAccount: (account: NewRelicAccount | null) => void;
+  initialAccountId?: number | null;
 }
 
-function NewRelicAccountSelector({ selectedAccount, onSelectAccount }: NewRelicAccountSelectorProps) {
+function NewRelicAccountSelector({ selectedAccount, onSelectAccount, initialAccountId }: NewRelicAccountSelectorProps) {
   const [accounts, setAccounts] = useState<NewRelicAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,11 +125,17 @@ function NewRelicAccountSelector({ selectedAccount, onSelectAccount }: NewRelicA
         const data = await response.json();
         if (data.success && data.data) {
           setAccounts(data.data);
-          // Auto-select the default account if none selected
+          // Auto-select the saved account or default account if none selected
           if (!selectedAccount) {
-            const defaultAccount = data.data.find((a: NewRelicAccount) => a.isDefault);
-            if (defaultAccount) {
-              onSelectAccount(defaultAccount);
+            let accountToSelect: NewRelicAccount | undefined;
+            if (initialAccountId) {
+              accountToSelect = data.data.find((a: NewRelicAccount) => a.id === initialAccountId);
+            }
+            if (!accountToSelect) {
+              accountToSelect = data.data.find((a: NewRelicAccount) => a.isDefault);
+            }
+            if (accountToSelect) {
+              onSelectAccount(accountToSelect);
             }
           }
         }
@@ -140,7 +147,7 @@ function NewRelicAccountSelector({ selectedAccount, onSelectAccount }: NewRelicA
     }
     fetchAccounts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialAccountId]);
 
   return (
     <div className="mb-4">
@@ -236,22 +243,27 @@ interface NewRelicEntity {
 interface NewRelicEntitySelectorProps {
   selectedEntity: NewRelicEntity | null;
   onSelectEntity: (entity: NewRelicEntity | null) => void;
+  accountId?: number | null;
+  initialEntityGuid?: string | null;
 }
 
-function NewRelicEntitySelector({ selectedEntity, onSelectEntity }: NewRelicEntitySelectorProps) {
+function NewRelicEntitySelector({ selectedEntity, onSelectEntity, accountId, initialEntityGuid }: NewRelicEntitySelectorProps) {
   const [entities, setEntities] = useState<NewRelicEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch entities from API
+  // Fetch entities from API when accountId changes
   useEffect(() => {
     async function fetchEntities() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/newrelic/entities');
+        const url = accountId
+          ? `/api/newrelic/entities?accountId=${accountId}`
+          : '/api/newrelic/entities';
+        const response = await fetch(url);
         if (!response.ok) {
           if (response.status === 503) {
             setError('New Relic not configured');
@@ -262,6 +274,13 @@ function NewRelicEntitySelector({ selectedEntity, onSelectEntity }: NewRelicEnti
         const data = await response.json();
         if (data.success && data.data) {
           setEntities(data.data);
+          // Auto-select the saved entity if it exists in this account's entities
+          if (!selectedEntity && initialEntityGuid) {
+            const savedEntity = data.data.find((e: NewRelicEntity) => e.guid === initialEntityGuid);
+            if (savedEntity) {
+              onSelectEntity(savedEntity);
+            }
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load entities');
@@ -270,7 +289,8 @@ function NewRelicEntitySelector({ selectedEntity, onSelectEntity }: NewRelicEnti
       }
     }
     fetchEntities();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId, initialEntityGuid]);
 
   // Filter entities by search query
   const filteredEntities = entities.filter(entity =>
@@ -446,7 +466,97 @@ function McpDetailPanel({ mcpId, mcpName, mcpDescription, isEnabled, isOpen, onC
   const tools = MCP_TOOLS[mcpId] || [];
   const [selectedAccount, setSelectedAccount] = useState<NewRelicAccount | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<NewRelicEntity | null>(null);
+  const [savedAccountId, setSavedAccountId] = useState<number | null>(null);
+  const [savedEntityGuid, setSavedEntityGuid] = useState<string | null>(null);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
   const isNewRelic = mcpId === 'newrelic';
+
+  // Load saved preferences on mount
+  useEffect(() => {
+    if (!isNewRelic) return;
+
+    async function loadPreferences() {
+      try {
+        const [accountRes, entityRes] = await Promise.all([
+          fetch('/api/user/preferences?key=newrelic_account'),
+          fetch('/api/user/preferences?key=newrelic_entity'),
+        ]);
+
+        if (accountRes.ok) {
+          const data = await accountRes.json();
+          if (data.value?.id) {
+            setSavedAccountId(data.value.id);
+          }
+        }
+
+        if (entityRes.ok) {
+          const data = await entityRes.json();
+          if (data.value?.guid) {
+            setSavedEntityGuid(data.value.guid);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load New Relic preferences:', error);
+      } finally {
+        setPrefsLoaded(true);
+      }
+    }
+
+    loadPreferences();
+  }, [isNewRelic]);
+
+  // Save account when changed
+  const handleAccountSelect = useCallback(async (account: NewRelicAccount | null) => {
+    setSelectedAccount(account);
+    // Clear entity when account changes
+    setSelectedEntity(null);
+
+    if (!account) return;
+
+    setSaving(true);
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'newrelic_account',
+          value: { id: account.id, name: account.name },
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to save New Relic account:', error);
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  // Save entity when changed
+  const handleEntitySelect = useCallback(async (entity: NewRelicEntity | null) => {
+    setSelectedEntity(entity);
+
+    setSaving(true);
+    try {
+      if (entity) {
+        await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'newrelic_entity',
+            value: { guid: entity.guid, name: entity.name, domain: entity.domain },
+          }),
+        });
+      } else {
+        await fetch('/api/user/preferences?key=newrelic_entity', {
+          method: 'DELETE',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save New Relic entity:', error);
+    } finally {
+      setSaving(false);
+    }
+  }, []);
 
   return (
     <>
@@ -513,17 +623,30 @@ function McpDetailPanel({ mcpId, mcpName, mcpDescription, isEnabled, isOpen, onC
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
             {/* New Relic Account & Entity Selectors */}
-            {isNewRelic && (
+            {isNewRelic && prefsLoaded && (
               <>
                 <NewRelicAccountSelector
                   selectedAccount={selectedAccount}
-                  onSelectAccount={setSelectedAccount}
+                  onSelectAccount={handleAccountSelect}
+                  initialAccountId={savedAccountId}
                 />
                 <NewRelicEntitySelector
                   selectedEntity={selectedEntity}
-                  onSelectEntity={setSelectedEntity}
+                  onSelectEntity={handleEntitySelect}
+                  accountId={selectedAccount?.id}
+                  initialEntityGuid={savedEntityGuid}
                 />
+                {saving && (
+                  <div className="text-xs text-[var(--md-on-surface-variant)] mb-3">
+                    Saving preferences...
+                  </div>
+                )}
               </>
+            )}
+            {isNewRelic && !prefsLoaded && (
+              <div className="text-sm text-[var(--md-on-surface-variant)] mb-4">
+                Loading preferences...
+              </div>
             )}
 
             {/* Tools List */}
