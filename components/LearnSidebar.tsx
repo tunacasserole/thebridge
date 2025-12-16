@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useLearn, type LessonSummary } from '@/contexts/LearnContext';
 
 interface LearnSidebarProps {
@@ -83,12 +84,142 @@ function LessonSkeleton() {
   );
 }
 
+interface CreateLessonFormProps {
+  onClose: () => void;
+}
+
+function CreateLessonForm({ onClose }: CreateLessonFormProps) {
+  const { createLesson, isGenerating, isSaving, error } = useLearn();
+  const [name, setName] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+
+    if (!name.trim()) {
+      setLocalError('Lesson name is required');
+      return;
+    }
+    if (!prompt.trim()) {
+      setLocalError('Prompt is required to generate content');
+      return;
+    }
+
+    try {
+      await createLesson({ name: name.trim(), prompt: prompt.trim() });
+      onClose();
+    } catch {
+      // Error is handled by context
+    }
+  };
+
+  const isProcessing = isGenerating || isSaving;
+  const displayError = localError || error;
+
+  return (
+    <div className="px-3 py-4 border-b border-[var(--md-outline-variant)] bg-[var(--md-surface-container)]">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#a67c52]">
+            New Lesson
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded hover:bg-[var(--md-surface-container-high)] transition-colors"
+            disabled={isProcessing}
+          >
+            <svg className="w-4 h-4 text-[var(--md-on-surface-variant)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div>
+          <label className="block text-xs text-[var(--md-on-surface-variant)] mb-1">
+            Lesson Name
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Introduction to Kubernetes"
+            className="w-full px-3 py-2 text-sm rounded-lg bg-[var(--md-surface)] border border-[var(--md-outline-variant)] text-[var(--md-on-surface)] placeholder:text-[var(--md-on-surface-variant)] focus:outline-none focus:ring-2 focus:ring-[#a67c52] focus:border-transparent"
+            disabled={isProcessing}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-[var(--md-on-surface-variant)] mb-1">
+            Content Prompt
+          </label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe what this lesson should cover. AI will generate the content based on your prompt."
+            rows={3}
+            className="w-full px-3 py-2 text-sm rounded-lg bg-[var(--md-surface)] border border-[var(--md-outline-variant)] text-[var(--md-on-surface)] placeholder:text-[var(--md-on-surface-variant)] focus:outline-none focus:ring-2 focus:ring-[#a67c52] focus:border-transparent resize-none"
+            disabled={isProcessing}
+          />
+        </div>
+
+        {displayError && (
+          <p className="text-xs text-[var(--md-error)]">{displayError}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={isProcessing}
+          className="w-full py-2 px-4 text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          style={{
+            backgroundColor: isProcessing ? 'rgba(166, 124, 82, 0.5)' : '#a67c52',
+            color: 'white',
+          }}
+        >
+          {isGenerating ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Generating content...
+            </>
+          ) : isSaving ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Saving...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Generate & Create Lesson
+            </>
+          )}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function LearnSidebar({ mode = 'full', onToggleMode }: LearnSidebarProps) {
   const { lessons, currentLessonId, isLoadingLessons, error, selectLesson, refreshLessons } = useLearn();
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const isMiniMode = mode === 'mini';
 
   return (
     <aside className={`${isMiniMode ? 'w-14' : 'w-64'} h-full flex-shrink-0 border-r border-[var(--md-outline-variant)] bg-[var(--md-surface)] flex flex-col overflow-hidden relative transition-all duration-300`}>
+      {/* Create Form - slides in from top */}
+      {showCreateForm && !isMiniMode && (
+        <CreateLessonForm onClose={() => setShowCreateForm(false)} />
+      )}
+
       <div className={`${isMiniMode ? 'p-1' : 'p-3'} flex-1 space-y-4 overflow-y-auto`}>
         {/* Lessons Header */}
         {!isMiniMode && (
@@ -107,23 +238,67 @@ export default function LearnSidebar({ mode = 'full', onToggleMode }: LearnSideb
                 {lessons.length}
               </span>
             </div>
-            {/* Refresh button */}
-            <button
-              onClick={() => refreshLessons()}
-              className="p-1 rounded transition-colors hover:bg-[var(--md-surface-container-high)]"
-              title="Refresh lessons"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+            <div className="flex items-center gap-1">
+              {/* Add Lesson button */}
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="p-1 rounded transition-colors hover:bg-[var(--md-surface-container-high)]"
+                style={{ color: '#a67c52' }}
+                title="Add new lesson"
               >
-                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              {/* Refresh button */}
+              <button
+                onClick={() => refreshLessons()}
+                className="p-1 rounded transition-colors hover:bg-[var(--md-surface-container-high)]"
+                title="Refresh lessons"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
           </div>
+        )}
+
+        {/* Mini mode Add button */}
+        {isMiniMode && (
+          <button
+            onClick={() => {
+              onToggleMode?.(); // Expand sidebar first
+              setTimeout(() => setShowCreateForm(true), 300);
+            }}
+            className="w-full flex items-center justify-center p-1.5 rounded-lg transition-all duration-200 hover:bg-[var(--md-surface-container)]"
+            style={{ color: '#a67c52' }}
+            title="Add new lesson"
+          >
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
+              style={{
+                background: 'rgba(166, 124, 82, 0.15)',
+                border: '1.5px dashed rgba(166, 124, 82, 0.5)',
+              }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14M5 12h14" />
+              </svg>
+            </div>
+          </button>
         )}
 
         {/* Lessons List */}
@@ -161,7 +336,7 @@ export default function LearnSidebar({ mode = 'full', onToggleMode }: LearnSideb
                 No lessons available
               </p>
               <p className="text-xs text-[var(--md-on-surface-variant)] opacity-70 mt-1">
-                Lessons will appear here once added
+                Click + to create your first lesson
               </p>
             </div>
           ) : (
