@@ -31,6 +31,14 @@ import { trackTokenUsage } from '@/lib/analytics/tracking';
 import { filterTools, getDefaultLoadingStrategy } from '@/lib/tools/dynamicLoader';
 import { recordToolUsage } from '@/lib/tools/analytics';
 import { optimizeToolResult } from '@/lib/tokens';
+import {
+  logAIRequest,
+  logAIResponse,
+  logMCPToolCall,
+  logMCPToolResult,
+  logToolSummary,
+  logModelRouting,
+} from '@/lib/logging/serverLogger';
 
 // Get Anthropic client (creates per-request for user API key support)
 async function getAnthropicClient(): Promise<Anthropic> {
@@ -104,7 +112,8 @@ export async function POST(request: NextRequest) {
     // Use routed model
     const modelId = routingDecision.modelId;
 
-    console.log('[Chat] Model routing:', {
+    // Log model routing decision
+    logModelRouting({
       requested: model,
       routed: routingDecision.model,
       reason: routingDecision.reason,
@@ -207,26 +216,26 @@ ${templateInstruction}
 
 Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
 
-    console.log('[Chat] Starting agent loop with model:', modelId);
-    console.log('[Chat] MCP servers connected:', serverNames.join(', ') || 'none');
-    if (failedServers.length > 0) {
-      console.warn('[Chat] MCP servers failed to connect:', failedServers.join(', '));
-    }
-    console.log('[Chat] Tool filtering:', {
-      totalAvailable: filterMetadata.totalAvailable,
-      loaded: filterMetadata.loaded,
-      filtered: filterMetadata.filtered,
-      tokensSaved: `~${filterMetadata.tokensSaved}`,
-      categories: filterMetadata.categories.join(', '),
-    });
-    console.log('[Chat] Tools loaded:', tools.length > 10 ? `${tools.length} tools` : tools.map((t) => t.name).join(', ') || 'none');
-    console.log('[Chat] Extended thinking:', extendedThinking);
-    console.log('[Chat] Response optimization:', {
-      profile: lengthConfig.profile,
+    // Log AI request with formatted output
+    logAIRequest({
+      model: modelId,
+      messageCount: messages.length,
+      toolCount: tools.length,
+      hasThinking: extendedThinking,
       maxTokens: lengthConfig.maxTokens,
-      thinkingBudget: lengthConfig.thinkingBudget,
-      queryComplexity: lengthConfig.analysis.estimatedComplexity,
+      conversationId,
     });
+
+    // Log MCP server connection status
+    if (serverNames.length > 0) {
+      console.log(`[Chat] MCP servers connected: ${serverNames.join(', ')}`);
+    }
+    if (failedServers.length > 0) {
+      console.warn(`[Chat] MCP servers failed: ${failedServers.join(', ')}`);
+    }
+    if (filterMetadata.filtered > 0) {
+      console.log(`[Chat] Tool filtering: ${filterMetadata.loaded}/${filterMetadata.totalAvailable} tools (~${filterMetadata.tokensSaved} tokens saved)`);
+    }
 
     // Create streaming response
     const encoder = new TextEncoder();
@@ -239,12 +248,14 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
         let totalOutputTokens = 0;
         let totalCacheReadTokens = 0;
         let totalCacheCreationTokens = 0;
+        const toolExecutionSummary: Array<{ name: string; success: boolean; duration: number }> = [];
+        let requestStartTime = Date.now();
 
         try {
           // Agent loop
           while (iterations < MAX_ITERATIONS) {
             iterations++;
-            console.log(`[Chat] Iteration ${iterations}`);
+            requestStartTime = Date.now();
 
             // Get client for this request (supports per-user API keys)
             const anthropic = await getAnthropicClient();
@@ -362,7 +373,16 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
               const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
               for (const toolUse of toolUseBlocks) {
-                console.log(`[Chat] Executing tool: ${toolUse.name}`);
+                // Parse server and tool name for logging
+                const [serverName, ...toolParts] = toolUse.name.split('__');
+                const actualToolName = toolParts.join('__');
+
+                // Log the MCP tool call
+                logMCPToolCall({
+                  serverName,
+                  toolName: actualToolName,
+                  input: verbose ? (toolUse.input as Record<string, unknown>) : undefined,
+                });
 
                 // Measure tool execution time
                 const executionStart = Date.now();
@@ -374,6 +394,23 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
                 );
 
                 const executionTime = Date.now() - executionStart;
+
+                // Log the MCP tool result
+                logMCPToolResult({
+                  serverName,
+                  toolName: actualToolName,
+                  success: result.success,
+                  duration: executionTime,
+                  result: verbose ? result.data : undefined,
+                  error: result.error,
+                });
+
+                // Track for summary
+                toolExecutionSummary.push({
+                  name: toolUse.name,
+                  success: result.success,
+                  duration: executionTime,
+                });
 
                 // Record tool usage for analytics
                 if (user?.id) {
@@ -509,7 +546,24 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
             )
           );
 
-          // Log performance statistics
+          // Log AI response summary
+          const totalDuration = Date.now() - requestStartTime;
+          logAIResponse({
+            model: modelId,
+            duration: totalDuration,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            cacheHits: totalCacheReadTokens,
+            textLength: finalResponse.length,
+            toolCallCount: toolExecutionSummary.length,
+          });
+
+          // Log tool execution summary if tools were used
+          if (toolExecutionSummary.length > 0) {
+            logToolSummary(toolExecutionSummary);
+          }
+
+          // Log cache and routing statistics
           logCacheStats('[Chat Cache]');
           logRoutingStats();
         } catch (error) {
