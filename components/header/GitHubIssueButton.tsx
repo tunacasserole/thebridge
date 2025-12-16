@@ -7,16 +7,8 @@ import { colors } from '@/lib/colors';
 interface CreateIssueFormData {
   title: string;
   body: string;
-  labels: string[];
 }
 
-const AVAILABLE_LABELS = [
-  { value: 'bug', label: 'Bug', color: '#d73a4a' },
-  { value: 'enhancement', label: 'Enhancement', color: '#a2eeef' },
-  { value: 'documentation', label: 'Documentation', color: '#0075ca' },
-  { value: 'question', label: 'Question', color: '#d876e3' },
-  { value: 'help wanted', label: 'Help Wanted', color: '#008672' },
-];
 
 export default function GitHubIssueButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +18,6 @@ export default function GitHubIssueButton() {
   const [formData, setFormData] = useState<CreateIssueFormData>({
     title: '',
     body: '',
-    labels: [],
   });
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -54,7 +45,7 @@ export default function GitHubIssueButton() {
   // Reset form when opening
   useEffect(() => {
     if (isOpen) {
-      setFormData({ title: '', body: '', labels: [] });
+      setFormData({ title: '', body: '' });
       setError(null);
       setSuccess(null);
     }
@@ -74,7 +65,7 @@ export default function GitHubIssueButton() {
       const response = await fetch('/api/github/issues', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, labels: ['claude-triage'] }),
       });
 
       const result = await response.json();
@@ -84,7 +75,7 @@ export default function GitHubIssueButton() {
       }
 
       setSuccess({ url: result.data.url, number: result.data.number });
-      setFormData({ title: '', body: '', labels: [] });
+      setFormData({ title: '', body: '' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create issue');
     } finally {
@@ -92,15 +83,7 @@ export default function GitHubIssueButton() {
     }
   };
 
-  const toggleLabel = (label: string) => {
-    setFormData(prev => ({
-      ...prev,
-      labels: prev.labels.includes(label)
-        ? prev.labels.filter(l => l !== label)
-        : [...prev.labels, label],
-    }));
-  };
-
+  
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
@@ -363,82 +346,75 @@ export default function GitHubIssueButton() {
                   />
                 </div>
 
-                {/* Labels */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label
+                {/* Label and Submit Row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {/* Label */}
+                  <div>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: colors.onSurfaceVariant,
+                        marginBottom: '8px',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      LABEL
+                    </label>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        color: '#fff',
+                        background: colors.tertiary,
+                        border: `1px solid ${colors.tertiary}`,
+                        borderRadius: '12px',
+                      }}
+                    >
+                      <Icon name="check" size={12} decorative />
+                      claude-triage
+                    </div>
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !formData.title.trim()}
                     style={{
-                      display: 'block',
-                      fontSize: '11px',
+                      padding: '10px 20px',
+                      fontSize: '13px',
                       fontWeight: 600,
-                      color: colors.onSurfaceVariant,
-                      marginBottom: '8px',
-                      letterSpacing: '0.5px',
+                      color: '#000',
+                      background: `linear-gradient(135deg, ${colors.tertiary}, ${colors.tertiaryDark})`,
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: isSubmitting || !formData.title.trim() ? 'not-allowed' : 'pointer',
+                      opacity: isSubmitting || !formData.title.trim() ? 0.6 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'opacity 0.15s',
                     }}
                   >
-                    LABELS
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {AVAILABLE_LABELS.map((label) => {
-                      const isSelected = formData.labels.includes(label.value);
-                      return (
-                        <button
-                          key={label.value}
-                          type="button"
-                          onClick={() => toggleLabel(label.value)}
-                          disabled={isSubmitting}
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '11px',
-                            fontWeight: 500,
-                            color: isSelected ? '#fff' : label.color,
-                            background: isSelected ? label.color : `${label.color}22`,
-                            border: `1px solid ${label.color}`,
-                            borderRadius: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                          }}
-                        >
-                          {label.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    {isSubmitting ? (
+                      <>
+                        <Icon name="progress_activity" size={16} animate="animate-spin" decorative />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="add" size={16} decorative />
+                        Create Issue
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !formData.title.trim()}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#000',
-                    background: `linear-gradient(135deg, ${colors.tertiary}, ${colors.tertiaryDark})`,
-                    border: 'none',
-                    borderRadius: '10px',
-                    cursor: isSubmitting || !formData.title.trim() ? 'not-allowed' : 'pointer',
-                    opacity: isSubmitting || !formData.title.trim() ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'opacity 0.15s',
-                  }}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Icon name="progress_activity" size={18} animate="animate-spin" decorative />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="add" size={18} decorative />
-                      Create Issue
-                    </>
-                  )}
-                </button>
               </form>
             )}
           </div>
