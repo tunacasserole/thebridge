@@ -13,3 +13,4 @@ export { PrometheusLogo } from './PrometheusLogo';
 export { GitHubLogo } from './GitHubLogo';
 export { SlackLogo } from './SlackLogo';
 export { JiraLogo } from './JiraLogo';
+export { CloudflareLogo } from './CloudflareLogo';
