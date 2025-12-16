@@ -13,11 +13,12 @@ const result = dotenv.config({ path: envLocalPath, override: true });
 export default defineConfig({
   earlyAccess: true,
   schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
+  migrate: {
+    // Use direct URL for migrations (bypasses pgbouncer)
+    url: process.env.DIRECT_URL!,
   },
   datasource: {
+    // Use pooled URL for application queries
     url: process.env.DATABASE_URL!,
-    directUrl: process.env.DIRECT_URL!,
   },
 });
