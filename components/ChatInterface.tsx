@@ -843,11 +843,8 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         <div className="flex flex-col flex-1 min-h-0 justify-center items-center px-4">
           {/* Centered content container */}
           <div className="w-full max-w-2xl flex flex-col items-center">
-            {/* Kubernetes Fact - educational content */}
-            <KubernetesFact />
-
-            {/* Greeting - positioned above input with spacing */}
-            <div className="mb-8">
+            {/* Greeting - centered between header and Kubernetes fact */}
+            <div className="mb-6">
               <div className="flex items-center justify-center gap-3">
                 <span className="text-[#fbbf24] text-4xl">✺</span>
                 <h2 className="text-4xl font-serif text-[var(--md-on-surface)]">
@@ -855,6 +852,9 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                 </h2>
               </div>
             </div>
+
+            {/* Kubernetes Fact - educational content below greeting */}
+            <KubernetesFact />
 
             {error && (
               <div className="py-2 mb-4 w-full bg-[var(--md-warning-container)] border border-[var(--md-warning)] rounded-lg">
