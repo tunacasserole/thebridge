@@ -41,8 +41,6 @@ interface Message {
 
 interface ChatInterfaceProps {
   enabledTools?: string[];
-  onToggleTools?: () => void;
-  toolsOpen?: boolean;
   onLoadingChange?: (isLoading: boolean) => void;
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
@@ -64,7 +62,7 @@ export type { Message };
 const INPUT_HISTORY_KEY = 'thebridge-input-history';
 const MAX_HISTORY_SIZE = 50;
 
-const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(function ChatInterface({ enabledTools = [], onToggleTools, toolsOpen, onLoadingChange, conversationId, onConversationCreated }, ref) {
+const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(function ChatInterface({ enabledTools = [], onLoadingChange, conversationId, onConversationCreated }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationId || null);
@@ -738,24 +736,8 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         </div>
       )}
 
-      {/* Tools, Model, Extended Thinking, and Effort Toggles */}
+      {/* Model, Extended Thinking, and Effort Toggles */}
       <div className="mt-2 flex justify-center items-center gap-4 flex-wrap">
-        {onToggleTools && (
-          <>
-            <button
-              type="button"
-              onClick={onToggleTools}
-              className={`text-xs transition-colors duration-200 ${
-                toolsOpen
-                  ? 'text-[var(--md-accent)] hover:text-[var(--md-accent-dark)]'
-                  : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
-              }`}
-            >
-              {toolsOpen ? '✓ Tools' : 'Tools'}
-            </button>
-            <span className="text-[var(--md-outline-variant)]">|</span>
-          </>
-        )}
         <ResponseModeSelector value={responseMode} onChange={setResponseMode} />
         <span className="text-[var(--md-outline-variant)]">|</span>
         <div className="relative" ref={modelMenuRef}>
