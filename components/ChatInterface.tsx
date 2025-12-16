@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import TokenBudgetDisplay from './TokenBudgetDisplay';
+import QueryOptimizer from './QueryOptimizer';
+import ResponseModeSelector, { useResponseMode, type ResponseMode } from './ResponseModeSelector';
+import TokenUsageFeedback from './TokenUsageFeedback';
 
 interface FileAttachment {
   name: string;
@@ -16,6 +20,14 @@ interface ToolCall {
   input?: Record<string, unknown>;
 }
 
+interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  total: number;
+  cacheHits?: number;
+  cacheCreated?: number;
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -23,6 +35,7 @@ interface Message {
   timestamp: Date;
   toolCalls?: ToolCall[];
   files?: FileAttachment[];
+  tokenUsage?: TokenUsage;
 }
 
 interface ChatInterfaceProps {
@@ -30,6 +43,8 @@ interface ChatInterfaceProps {
   onToggleTools?: () => void;
   toolsOpen?: boolean;
   onLoadingChange?: (isLoading: boolean) => void;
+  conversationId?: string | null;
+  onConversationCreated?: (id: string) => void;
 }
 
 export interface ChatInterfaceHandle {
@@ -37,15 +52,36 @@ export interface ChatInterfaceHandle {
   focusInput: () => void;
   getMessages: () => Message[];
   clearMessages: () => void;
+  startNewConversation: () => void;
+  getCurrentConversationId: () => string | null;
 }
 
 // Export Message type for use by other components
 export type { Message };
 
-const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(function ChatInterface({ enabledTools = [], onToggleTools, toolsOpen, onLoadingChange }, ref) {
+// localStorage key for input history
+const INPUT_HISTORY_KEY = 'thebridge-input-history';
+const MAX_HISTORY_SIZE = 50;
+
+const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(function ChatInterface({ enabledTools = [], onToggleTools, toolsOpen, onLoadingChange, conversationId, onConversationCreated }, ref) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationId || null);
   const [isLoadingInternal, setIsLoadingInternal] = useState(false);
+  // Input history for up-arrow navigation
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [savedCurrentInput, setSavedCurrentInput] = useState('');
+
+  // Token tracking
+  const [sessionTokens, setSessionTokens] = useState(0);
+  const TOKEN_LIMIT = 200000; // 200K token budget
+
+  // Response mode
+  const [responseMode, setResponseMode] = useResponseMode();
+
+  // Query optimization
+  const [showQueryOptimizer, setShowQueryOptimizer] = useState(false);
 
   // Wrapper to notify parent of loading state changes
   const setIsLoading = (loading: boolean) => {
@@ -79,7 +115,12 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
     },
     getMessages: () => messages,
     clearMessages: () => setMessages([]),
-  }));
+    startNewConversation: () => {
+      setCurrentConversationId(null);
+      setMessages([]);
+    },
+    getCurrentConversationId: () => currentConversationId,
+  }), [messages, currentConversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,6 +129,125 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingToolCalls]);
+
+  // Load input history from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(INPUT_HISTORY_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setInputHistory(parsed);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load input history:', error);
+    }
+  }, []);
+
+  // Save input to history
+  const saveToHistory = (text: string) => {
+    if (!text.trim()) return;
+
+    setInputHistory((prev) => {
+      // Don't add duplicates at the top
+      const filtered = prev.filter((item) => item !== text);
+      const updated = [text, ...filtered].slice(0, MAX_HISTORY_SIZE);
+
+      // Save to localStorage
+      try {
+        localStorage.setItem(INPUT_HISTORY_KEY, JSON.stringify(updated));
+      } catch (error) {
+        console.error('Failed to save input history:', error);
+      }
+
+      return updated;
+    });
+
+    // Reset history navigation
+    setHistoryIndex(-1);
+    setSavedCurrentInput('');
+  };
+
+  // Navigate through input history
+  const navigateHistory = (direction: 'up' | 'down') => {
+    if (inputHistory.length === 0) return;
+
+    if (direction === 'up') {
+      if (historyIndex === -1) {
+        // Save current input before navigating
+        setSavedCurrentInput(input);
+        setHistoryIndex(0);
+        setInput(inputHistory[0]);
+      } else if (historyIndex < inputHistory.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setInput(inputHistory[newIndex]);
+      }
+    } else {
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(inputHistory[newIndex]);
+      } else if (historyIndex === 0) {
+        // Return to saved current input
+        setHistoryIndex(-1);
+        setInput(savedCurrentInput);
+      }
+    }
+  };
+
+  // Load conversation when conversationId prop changes
+  useEffect(() => {
+    if (conversationId && conversationId !== currentConversationId) {
+      setCurrentConversationId(conversationId);
+      loadConversation(conversationId);
+    } else if (!conversationId && currentConversationId) {
+      // Reset when conversationId becomes null (new chat)
+      setCurrentConversationId(null);
+      setMessages([]);
+    }
+  }, [conversationId]);
+
+  // Load conversation messages from database
+  const loadConversation = async (convId: string) => {
+    try {
+      const response = await fetch(`/api/conversations/${convId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const loadedMessages: Message[] = data.messages.map((msg: { id: string; role: 'user' | 'assistant'; content: string; createdAt: string; toolsUsed?: string }) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.createdAt),
+          toolCalls: msg.toolsUsed ? JSON.parse(msg.toolsUsed).map((name: string) => ({ name })) : undefined,
+        }));
+        setMessages(loadedMessages);
+      }
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+    }
+  };
+
+  // Create a new conversation
+  const createConversation = async (): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentConversationId(data.id);
+        onConversationCreated?.(data.id);
+        return data.id;
+      }
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
+    return null;
+  };
 
   // Close model menu when clicking outside
   useEffect(() => {
@@ -234,6 +394,9 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
       files: attachedFiles.length > 0 ? [...attachedFiles] : undefined,
     };
 
+    // Save to input history before clearing
+    saveToHistory(input.trim());
+
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setAttachedFiles([]);
@@ -246,6 +409,12 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
     abortControllerRef.current = abortController;
 
     try {
+      // Create conversation on first message if we don't have one
+      let activeConversationId = currentConversationId;
+      if (!activeConversationId && messages.length === 0) {
+        activeConversationId = await createConversation();
+      }
+
       const conversationHistory = messages.map((msg) => ({
         role: msg.role,
         content: msg.content,
@@ -266,6 +435,8 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
           model,
           verbose,
           files: userMessage.files,
+          conversationId: activeConversationId,
+          responseProfile: responseMode,
         }),
         signal: abortController.signal,
       });
@@ -323,12 +494,19 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                       typeof tc === 'string' ? { name: tc } : { name: tc.name, input: tc.input }
                     )
                   : collectedToolCalls;
+
+                // Track token usage
+                if (data.tokenUsage) {
+                  setSessionTokens((prev) => prev + data.tokenUsage.total);
+                }
+
                 const assistantMessage: Message = {
                   id: (Date.now() + 1).toString(),
                   role: 'assistant',
                   content: data.response || finalContent,
                   timestamp: new Date(),
                   toolCalls: finalToolCalls,
+                  tokenUsage: data.tokenUsage,
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
                 setStreamingToolCalls([]);
@@ -367,6 +545,20 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+    } else if (e.key === 'ArrowUp' && !e.shiftKey) {
+      // Only navigate history if cursor is at the start or input is empty
+      const textarea = e.currentTarget;
+      if (textarea.selectionStart === 0 || input === '') {
+        e.preventDefault();
+        navigateHistory('up');
+      }
+    } else if (e.key === 'ArrowDown' && !e.shiftKey) {
+      // Only navigate history if cursor is at the end or input is empty
+      const textarea = e.currentTarget;
+      if (textarea.selectionStart === input.length || input === '') {
+        e.preventDefault();
+        navigateHistory('down');
+      }
     }
   };
 
@@ -516,8 +708,21 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         </div>
       </form>
 
+      {/* Query Optimizer */}
+      {showQueryOptimizer && input.length > 10 && (
+        <div className="mt-2">
+          <QueryOptimizer
+            query={input}
+            onApplySuggestion={(optimized) => {
+              setInput(optimized);
+              setShowQueryOptimizer(false);
+            }}
+          />
+        </div>
+      )}
+
       {/* Tools, Model, Extended Thinking, and Effort Toggles */}
-      <div className="mt-2 flex justify-center items-center gap-4">
+      <div className="mt-2 flex justify-center items-center gap-4 flex-wrap">
         {onToggleTools && (
           <>
             <button
@@ -534,6 +739,8 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
             <span className="text-[var(--md-outline-variant)]">|</span>
           </>
         )}
+        <ResponseModeSelector value={responseMode} onChange={setResponseMode} />
+        <span className="text-[var(--md-outline-variant)]">|</span>
         <div className="relative" ref={modelMenuRef}>
           <button
             type="button"
@@ -607,7 +814,27 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         >
           {verbose ? '✓ Verbose' : 'Verbose'}
         </button>
+        <span className="text-[var(--md-outline-variant)]">|</span>
+        <button
+          type="button"
+          onClick={() => setShowQueryOptimizer(!showQueryOptimizer)}
+          className={`text-xs transition-colors duration-200 ${
+            showQueryOptimizer
+              ? 'text-[var(--md-accent)] hover:text-[var(--md-accent-dark)]'
+              : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
+          }`}
+          title="Show query optimization hints"
+        >
+          {showQueryOptimizer ? '✓ Optimize' : 'Optimize'}
+        </button>
       </div>
+
+      {/* Token Budget Display */}
+      {sessionTokens > 0 && (
+        <div className="mt-2 flex justify-center">
+          <TokenBudgetDisplay tokensUsed={sessionTokens} tokenLimit={TOKEN_LIMIT} />
+        </div>
+      )}
     </div>
   );
 
@@ -803,6 +1030,16 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                     ">
                       <ReactMarkdown>{message.content}</ReactMarkdown>
                     </div>
+
+                    {/* Token Usage Feedback for Assistant Messages */}
+                    {message.role === 'assistant' && message.tokenUsage && (
+                      <div className="mt-3">
+                        <TokenUsageFeedback
+                          usage={message.tokenUsage}
+                          onOptimizeClick={() => setShowQueryOptimizer(true)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

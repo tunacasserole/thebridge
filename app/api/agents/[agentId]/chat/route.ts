@@ -3,13 +3,26 @@
  *
  * Uses standard @anthropic-ai/sdk with custom agent loop.
  * Supports specialized agents with different system prompts.
+ * ALL tools come from MCP servers dynamically - no hardcoded tools.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
 import { getAgentConfig, AgentConfig } from '@/lib/agents/configs';
 import { getAgent } from '@/lib/db';
-import { ALL_TOOLS, executeTool } from '@/lib/tools';
+import { loadMCPTools, executeMCPTool, closeMCPConnections } from '@/lib/mcp/client';
+import {
+  createCachedRequestConfig,
+  updateCacheStats,
+  logCacheStats,
+} from '@/lib/cache/promptCache';
+import {
+  routeToModel,
+  trackRoutingDecision,
+  logRoutingStats,
+} from '@/lib/routing/modelRouter';
+import { filterTools, getDefaultLoadingStrategy } from '@/lib/tools/dynamicLoader';
+import { recordToolUsage } from '@/lib/tools/analytics';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -25,20 +38,6 @@ const MODEL_MAP: Record<string, string> = {
 
 // Max agent loop iterations
 const MAX_ITERATIONS = 20;
-
-// Tool categories that map to integration categories
-const TOOL_CATEGORY_MAP: Record<string, string[]> = {
-  rootly: ['rootly_get_incidents', 'rootly_update_incident', 'rootly_post_comment'],
-  github: ['github_get_prs'],
-  jira: ['jira_search_issues', 'jira_get_issue', 'jira_add_comment', 'jira_create_story'],
-  confluence: [], // No dedicated tools yet
-  newrelic: ['newrelic_get_applications'],
-  coralogix: [], // Would need direct API client
-  kubernetes: [], // Not suitable for serverless
-  metabase: ['metabase_list_databases', 'metabase_execute_query', 'metabase_search_questions', 'metabase_run_question'],
-  prometheus: [], // Would need direct API client
-  atlassian: ['jira_search_issues', 'jira_get_issue', 'jira_add_comment', 'jira_create_story'],
-};
 
 interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -57,6 +56,7 @@ export async function POST(
       conversationHistory = [],
       role = 'sre',
       model: modelOverride,
+      enabledTools = [], // MCP server IDs enabled by user
     } = await request.json();
 
     // Get agent config from DB or fallback to hardcoded
@@ -89,31 +89,61 @@ export async function POST(
       return Response.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // Get model ID
-    const modelId = MODEL_MAP[agentConfig.model] || MODEL_MAP.sonnet;
+    // Route to appropriate model based on query complexity
+    const routingDecision = routeToModel(message, {
+      conversationHistory,
+      enabledTools: serversToEnable,
+      agentId,
+      userPreference: agentConfig.model as 'haiku' | 'sonnet' | 'opus' | undefined,
+    });
 
-    // Determine which tools this agent should have access to
-    // For specialized agents, filter tools based on their mcpServers config
-    let agentTools = ALL_TOOLS;
+    // Track routing decision
+    trackRoutingDecision(routingDecision);
 
-    if (agentConfig.mcpServers.length > 0) {
-      // Get tools for the agent's configured integrations
-      const enabledToolNames = new Set<string>();
+    // Use routed model
+    const modelId = routingDecision.modelId;
 
-      for (const server of agentConfig.mcpServers) {
-        const tools = TOOL_CATEGORY_MAP[server] || [];
-        tools.forEach((t) => enabledToolNames.add(t));
+    console.log(`[Agent: ${agentId}] Model routing:`, {
+      requested: agentConfig.model,
+      routed: routingDecision.model,
+      reason: routingDecision.reason,
+      costSavings: routingDecision.costSavings,
+    });
+
+    // Determine which MCP servers to enable
+    // Use agent's configured mcpServers if available, otherwise use what user enabled
+    const serversToEnable = agentConfig.mcpServers.length > 0
+      ? agentConfig.mcpServers
+      : enabledTools;
+
+    // Load tools from MCP servers
+    const { tools: allTools, serverNames, failedServers } = await loadMCPTools(serversToEnable);
+
+    // Apply dynamic tool filtering to reduce token usage
+    const loadingStrategy = getDefaultLoadingStrategy(message, agentId);
+    const { tools: mcpTools, metadata: filterMetadata } = await filterTools(
+      allTools,
+      serverNames,
+      {
+        ...loadingStrategy,
+        query: message,
+        agentId,
       }
-
-      // Always include web tools for all agents
-      enabledToolNames.add('web_search');
-      enabledToolNames.add('http_request');
-
-      agentTools = ALL_TOOLS.filter((t) => enabledToolNames.has(t.name));
-    }
+    );
 
     console.log(`[Agent: ${agentId}] Starting with model: ${modelId}`);
-    console.log(`[Agent: ${agentId}] Tools: ${agentTools.map((t) => t.name).join(', ')}`);
+    console.log(`[Agent: ${agentId}] MCP servers connected: ${serverNames.join(', ') || 'none'}`);
+    if (failedServers.length > 0) {
+      console.warn(`[Agent: ${agentId}] MCP servers failed to connect: ${failedServers.join(', ')}`);
+    }
+    console.log(`[Agent: ${agentId}] Tool filtering:`, {
+      totalAvailable: filterMetadata.totalAvailable,
+      loaded: filterMetadata.loaded,
+      filtered: filterMetadata.filtered,
+      tokensSaved: `~${filterMetadata.tokensSaved}`,
+      categories: filterMetadata.categories.join(', '),
+    });
+    console.log(`[Agent: ${agentId}] Tools loaded: ${mcpTools.length > 10 ? `${mcpTools.length} tools` : mcpTools.map((t) => t.name).join(', ') || 'none'}`);
 
     // Build messages array
     const messages: Anthropic.MessageParam[] = [];
@@ -159,14 +189,20 @@ export async function POST(
             iterations++;
             console.log(`[Agent: ${agentId}] Iteration ${iterations}`);
 
-            // Call Claude
-            const response = await anthropic.messages.create({
-              model: modelId,
-              max_tokens: 8192,
-              system: agentConfig.systemPrompt,
-              tools: agentTools.length > 0 ? agentTools : undefined,
+            // Create cached request configuration
+            const requestConfig = createCachedRequestConfig({
+              systemPrompt: agentConfig.systemPrompt,
+              tools: mcpTools,
               messages,
+              model: modelId,
+              maxTokens: 8192,
             });
+
+            // Call Claude with caching enabled
+            const response = await anthropic.messages.create(requestConfig);
+
+            // Update cache statistics
+            updateCacheStats(response.usage);
 
             // Process response content
             const textBlocks: string[] = [];
@@ -234,10 +270,26 @@ export async function POST(
 
               for (const toolUse of toolUseBlocks) {
                 console.log(`[Agent: ${agentId}] Executing tool: ${toolUse.name}`);
-                const result = await executeTool(
+
+                // Measure tool execution time
+                const executionStart = Date.now();
+
+                // All tools are MCP tools
+                const result = await executeMCPTool(
                   toolUse.name,
                   toolUse.input as Record<string, unknown>
                 );
+
+                const executionTime = Date.now() - executionStart;
+
+                // Record tool usage for analytics
+                recordToolUsage(
+                  toolUse.name,
+                  undefined, // userId not available in agent route
+                  agentId,
+                  executionTime,
+                  result.success
+                ).catch(err => console.error('[Analytics] Failed to record tool usage:', err));
 
                 // Stream tool end
                 controller.enqueue(
@@ -277,6 +329,10 @@ export async function POST(
               })}\n\n`
             )
           );
+
+          // Log performance statistics
+          logCacheStats(`[Agent: ${agentId} Cache]`);
+          logRoutingStats();
         } catch (error) {
           console.error(`[Agent: ${agentId}] Error:`, error);
           controller.enqueue(
@@ -289,6 +345,8 @@ export async function POST(
           );
         } finally {
           clearInterval(heartbeatInterval);
+          // Close MCP connections
+          await closeMCPConnections();
           controller.close();
         }
       },

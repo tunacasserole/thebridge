@@ -75,29 +75,112 @@ function ConnectionStatus({ state, error }: { state: ConnectionState; error: str
 }
 
 /**
+ * Common allowed directories
+ */
+const COMMON_DIRECTORIES = [
+  { name: 'Development', path: '/Users/ahenderson/dev' },
+  { name: 'Projects', path: '/Users/ahenderson/projects' },
+  { name: 'Documents', path: '/Users/ahenderson/Documents' },
+  { name: 'This Project', path: '/Users/ahenderson/dev/thebridge' },
+];
+
+/**
+ * Directory picker for initial selection
+ */
+function DirectoryPicker({ onSelect }: { onSelect: (path: string) => void }) {
+  const [customPath, setCustomPath] = useState('');
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-2 border-b border-[--border-primary]">
+        <span className="text-sm font-medium text-[--text-secondary]">Select Directory</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2">
+        <p className="text-xs text-[--text-tertiary] mb-3">
+          Choose a directory to browse:
+        </p>
+        {COMMON_DIRECTORIES.map((dir) => (
+          <button
+            key={dir.path}
+            onClick={() => onSelect(dir.path)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-[--bg-tertiary] text-left mb-1"
+          >
+            <svg className="w-4 h-4 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-[--text-primary]">{dir.name}</div>
+              <div className="truncate text-xs text-[--text-tertiary]">{dir.path}</div>
+            </div>
+          </button>
+        ))}
+        <div className="mt-4 pt-3 border-t border-[--border-primary]">
+          <label className="text-xs text-[--text-tertiary] block mb-1">Custom path:</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customPath}
+              onChange={(e) => setCustomPath(e.target.value)}
+              placeholder="/path/to/directory"
+              className="flex-1 px-2 py-1 text-sm bg-[--bg-primary] border border-[--border-primary] rounded focus:outline-none focus:border-[--accent-primary]"
+            />
+            <button
+              onClick={() => customPath && onSelect(customPath)}
+              disabled={!customPath}
+              className="px-3 py-1 text-sm bg-[--accent-primary] text-white rounded hover:opacity-90 disabled:opacity-50"
+            >
+              Open
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * File tree component
  */
 function FileTree({
   entries,
+  currentPath,
   selectedPath,
   onSelect,
   onRefresh,
+  onBack,
 }: {
   entries: FileEntry[];
+  currentPath: string;
   selectedPath: string | null;
   onSelect: (entry: FileEntry) => void;
   onRefresh: () => void;
+  onBack: () => void;
 }) {
   const directories = entries.filter((e) => e.type === 'directory').sort((a, b) => a.name.localeCompare(b.name));
   const files = entries.filter((e) => e.type === 'file').sort((a, b) => a.name.localeCompare(b.name));
+  const pathParts = currentPath.split('/').filter(Boolean);
+  const currentDirName = pathParts[pathParts.length - 1] || 'Root';
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-2 border-b border-[--border-primary]">
-        <span className="text-sm font-medium text-[--text-secondary]">Files</span>
+        <div className="flex items-center gap-1 min-w-0">
+          <button
+            onClick={onBack}
+            className="p-1 hover:bg-[--bg-tertiary] rounded text-[--text-secondary] flex-shrink-0"
+            title="Go up / Change directory"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span className="text-sm font-medium text-[--text-secondary] truncate" title={currentPath}>
+            {currentDirName}
+          </span>
+        </div>
         <button
           onClick={onRefresh}
-          className="p-1 hover:bg-[--bg-tertiary] rounded text-[--text-secondary]"
+          className="p-1 hover:bg-[--bg-tertiary] rounded text-[--text-secondary] flex-shrink-0"
           title="Refresh"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,6 +189,9 @@ function FileTree({
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-1">
+        {entries.length === 0 && (
+          <p className="text-xs text-[--text-tertiary] p-2">No files found</p>
+        )}
         {directories.map((entry) => (
           <button
             key={entry.path}
@@ -283,14 +369,8 @@ export default function CodePanel({ className = '', defaultPath }: CodePanelProp
     }
   }, [claudePrompt, currentPath, runClaudeCode, loadDirectory]);
 
-  // Initial load
-  useEffect(() => {
-    if (connectionState === 'connected' && !currentPath) {
-      // Load home directory
-      const homeDir = process.env.HOME || '/Users';
-      loadDirectory(homeDir);
-    }
-  }, [connectionState, currentPath, loadDirectory]);
+  // Don't auto-load - let user select from defaultPath or sidebar
+  // This avoids the "path not allowed" error on initial load
 
   if (connectionState !== 'connected') {
     return (
@@ -323,12 +403,23 @@ export default function CodePanel({ className = '', defaultPath }: CodePanelProp
       <div className="flex flex-1 overflow-hidden" style={{ minHeight: '400px' }}>
         {/* File tree sidebar */}
         <div className="w-56 border-r border-[--border-primary] flex-shrink-0">
-          <FileTree
-            entries={entries}
-            selectedPath={selectedFile?.path || null}
-            onSelect={loadFile}
-            onRefresh={() => loadDirectory(currentPath)}
-          />
+          {currentPath ? (
+            <FileTree
+              entries={entries}
+              currentPath={currentPath}
+              selectedPath={selectedFile?.path || null}
+              onSelect={loadFile}
+              onRefresh={() => loadDirectory(currentPath)}
+              onBack={() => {
+                setCurrentPath('');
+                setEntries([]);
+                setSelectedFile(null);
+                setFileContent('');
+              }}
+            />
+          ) : (
+            <DirectoryPicker onSelect={loadDirectory} />
+          )}
         </div>
 
         {/* Editor area */}

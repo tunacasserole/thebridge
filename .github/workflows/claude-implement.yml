@@ -61,20 +61,8 @@ jobs:
             Use `gh` CLI for GitHub operations.
             Follow existing code patterns and conventions in this repository.
 
-          # Allow Claude to use necessary tools
-          allowed_tools: |
-            Read
-            Write
-            Edit
-            Bash(git:*)
-            Bash(gh:*)
-            Bash(npm:*)
-            Bash(npx:*)
-            Glob
-            Grep
-
-          # Limit turns to prevent runaway execution
-          max_turns: 50
+          # CLI arguments for configuration
+          claude_args: "--max-turns 50"
 
       - name: Comment on issue if failed
         if: failure()
