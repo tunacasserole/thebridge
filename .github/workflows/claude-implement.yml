@@ -10,10 +10,12 @@ on:
 jobs:
   implement:
     # Only run if:
-    # 1. Issue has 'claude-implement' label, OR
-    # 2. Comment contains @claude mention
+    # 1. Issue is opened with 'claude-implement' label already present, OR
+    # 2. The 'claude-implement' label was just added (labeled event), OR
+    # 3. Comment contains @claude mention
     if: |
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-implement')) ||
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'claude-implement')) ||
+      (github.event.action == 'labeled' && github.event.label.name == 'claude-implement') ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
 
     runs-on: ubuntu-latest
