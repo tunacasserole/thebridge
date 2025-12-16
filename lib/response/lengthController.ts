@@ -202,28 +202,52 @@ export function adjustForContext(
 
 /**
  * Gets max_tokens for extended thinking mode
+ *
+ * IMPORTANT: max_tokens must be > budget_tokens for extended thinking.
+ * Claude requires max_tokens to be greater than thinking.budget_tokens.
+ * See: https://docs.claude.com/en/docs/build-with-claude/extended-thinking
  */
-export function getThinkingBudget(complexity: number): number {
+export function getThinkingBudget(complexity: number, maxTokens: number): number {
   // Scale thinking budget based on complexity
+  let budget: number;
   if (complexity < 0.3) {
-    return 2000;  // Simple queries don't need much thinking
+    budget = 2000;  // Simple queries don't need much thinking
   } else if (complexity < 0.7) {
-    return 5000;  // Standard thinking for medium complexity
+    budget = 5000;  // Standard thinking for medium complexity
   } else {
-    return 10000; // Full thinking for complex queries
+    budget = 10000; // Full thinking for complex queries
   }
+
+  // CRITICAL: budget_tokens must be < max_tokens for extended thinking
+  // Leave at least 1024 tokens for the actual response
+  const maxBudget = Math.max(1024, maxTokens - 1024);
+
+  if (budget >= maxTokens) {
+    console.warn(`[LengthController] Reducing thinking budget from ${budget} to ${maxBudget} (max_tokens: ${maxTokens})`);
+    return maxBudget;
+  }
+
+  return budget;
 }
 
 /**
  * Validates and enforces max_tokens limits
+ *
+ * Note: When extended thinking is enabled, we need higher max_tokens
+ * to accommodate both the thinking budget and the actual response.
  */
-export function enforceTokenLimits(requestedTokens: number): number {
+export function enforceTokenLimits(requestedTokens: number, extendedThinking: boolean = false): number {
   const MIN_TOKENS = 256;
-  const MAX_TOKENS = 8192;
+  // Extended thinking requires higher max_tokens to fit both thinking + response
+  // Minimum for extended thinking: budget_tokens + response_tokens
+  const MAX_TOKENS = extendedThinking ? 16000 : 8192;
+  const MIN_THINKING_TOKENS = extendedThinking ? 4096 : MIN_TOKENS;
 
-  if (requestedTokens < MIN_TOKENS) {
-    console.warn(`[LengthController] Requested tokens ${requestedTokens} below minimum, using ${MIN_TOKENS}`);
-    return MIN_TOKENS;
+  const effectiveMin = extendedThinking ? MIN_THINKING_TOKENS : MIN_TOKENS;
+
+  if (requestedTokens < effectiveMin) {
+    console.warn(`[LengthController] Requested tokens ${requestedTokens} below minimum, using ${effectiveMin}`);
+    return effectiveMin;
   }
 
   if (requestedTokens > MAX_TOKENS) {
@@ -243,6 +267,7 @@ export function getResponseLengthConfig(params: {
   conversationLength?: number;
   hasFiles?: boolean;
   toolsEnabled?: boolean;
+  extendedThinking?: boolean;
 }): {
   maxTokens: number;
   thinkingBudget: number;
@@ -255,24 +280,32 @@ export function getResponseLengthConfig(params: {
     conversationLength = 0,
     hasFiles = false,
     toolsEnabled = false,
+    extendedThinking = false,
   } = params;
 
   // Get base configuration
   const baseConfig = getOptimalMaxTokens(message, profile, toolsEnabled);
 
   // Adjust for context
-  const adjustedMaxTokens = adjustForContext(
+  let adjustedMaxTokens = adjustForContext(
     baseConfig,
     conversationLength,
     hasFiles
   );
 
-  // Enforce limits
-  const maxTokens = enforceTokenLimits(adjustedMaxTokens);
+  // Boost max_tokens for extended thinking mode
+  // Extended thinking needs: budget_tokens + actual response tokens
+  if (extendedThinking) {
+    // Ensure we have enough room for thinking + a meaningful response
+    adjustedMaxTokens = Math.max(adjustedMaxTokens * 2, 8192);
+  }
 
-  // Get thinking budget
+  // Enforce limits (with extended thinking awareness)
+  const maxTokens = enforceTokenLimits(adjustedMaxTokens, extendedThinking);
+
+  // Get thinking budget (must be < maxTokens for extended thinking to work)
   const analysis = analyzeQuery(message);
-  const thinkingBudget = getThinkingBudget(analysis.estimatedComplexity);
+  const thinkingBudget = getThinkingBudget(analysis.estimatedComplexity, maxTokens);
 
   console.log('[LengthController] Configuration:', {
     profile: baseConfig.profile,
@@ -280,6 +313,7 @@ export function getResponseLengthConfig(params: {
     complexity: analysis.estimatedComplexity,
     maxTokens,
     thinkingBudget,
+    extendedThinking,
   });
 
   return {

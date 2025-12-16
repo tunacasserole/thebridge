@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
       conversationLength: conversationHistory.length,
       hasFiles: files.length > 0,
       toolsEnabled: tools.length > 0,
+      extendedThinking,
     });
 
     // Get template instruction to add to system prompt

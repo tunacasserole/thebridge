@@ -161,20 +161,38 @@ describe('Length Controller', () => {
 
   describe('getThinkingBudget', () => {
     it('scales budget based on complexity', () => {
-      const low = getThinkingBudget(0.2);
-      const medium = getThinkingBudget(0.5);
-      const high = getThinkingBudget(0.9);
+      const maxTokens = 16000; // Plenty of room for all budgets
+      const low = getThinkingBudget(0.2, maxTokens);
+      const medium = getThinkingBudget(0.5, maxTokens);
+      const high = getThinkingBudget(0.9, maxTokens);
 
       expect(low).toBeLessThan(medium);
       expect(medium).toBeLessThan(high);
     });
 
     it('returns 2000 for simple queries', () => {
-      expect(getThinkingBudget(0.1)).toBe(2000);
+      expect(getThinkingBudget(0.1, 16000)).toBe(2000);
     });
 
     it('returns 10000 for complex queries', () => {
-      expect(getThinkingBudget(0.8)).toBe(10000);
+      expect(getThinkingBudget(0.8, 16000)).toBe(10000);
+    });
+
+    it('constrains budget to be less than maxTokens', () => {
+      // When maxTokens is low, budget should be constrained
+      const smallMax = 4096;
+      const budget = getThinkingBudget(0.9, smallMax);
+
+      // Budget should be less than maxTokens (leaves room for response)
+      expect(budget).toBeLessThan(smallMax);
+    });
+
+    it('ensures budget never exceeds maxTokens - 1024', () => {
+      const maxTokens = 2048;
+      const budget = getThinkingBudget(0.9, maxTokens);
+
+      // Should cap at maxTokens - 1024 to leave room for response
+      expect(budget).toBeLessThanOrEqual(maxTokens - 1024);
     });
   });
 
@@ -189,6 +207,18 @@ describe('Length Controller', () => {
 
     it('allows valid values', () => {
       expect(enforceTokenLimits(2048)).toBe(2048);
+    });
+
+    describe('with extended thinking', () => {
+      it('enforces higher minimum for extended thinking', () => {
+        expect(enforceTokenLimits(100, true)).toBe(4096);
+        expect(enforceTokenLimits(2048, true)).toBe(4096);
+      });
+
+      it('allows higher maximum for extended thinking', () => {
+        expect(enforceTokenLimits(12000, true)).toBe(12000);
+        expect(enforceTokenLimits(20000, true)).toBe(16000);
+      });
     });
   });
 
@@ -243,6 +273,48 @@ describe('Length Controller', () => {
       });
 
       expect(withToolsAndFiles.maxTokens).toBeGreaterThan(baseline.maxTokens);
+    });
+
+    it('increases tokens for extended thinking mode', () => {
+      const withoutThinking = getResponseLengthConfig({
+        message: 'Analyze the system',
+        conversationLength: 5,
+        hasFiles: false,
+        toolsEnabled: false,
+        extendedThinking: false,
+      });
+
+      const withThinking = getResponseLengthConfig({
+        message: 'Analyze the system',
+        conversationLength: 5,
+        hasFiles: false,
+        toolsEnabled: false,
+        extendedThinking: true,
+      });
+
+      expect(withThinking.maxTokens).toBeGreaterThan(withoutThinking.maxTokens);
+      // Critical: thinkingBudget must ALWAYS be less than maxTokens
+      expect(withThinking.thinkingBudget).toBeLessThan(withThinking.maxTokens);
+    });
+
+    it('ensures thinkingBudget is always less than maxTokens', () => {
+      // Test various scenarios to ensure constraint is always met
+      const scenarios = [
+        { message: 'Is it working?', extendedThinking: true },
+        { message: 'Analyze everything comprehensively', extendedThinking: true },
+        { message: 'List all items', extendedThinking: true },
+      ];
+
+      scenarios.forEach((scenario) => {
+        const config = getResponseLengthConfig({
+          ...scenario,
+          conversationLength: 0,
+          hasFiles: false,
+          toolsEnabled: false,
+        });
+
+        expect(config.thinkingBudget).toBeLessThan(config.maxTokens);
+      });
     });
   });
 });
