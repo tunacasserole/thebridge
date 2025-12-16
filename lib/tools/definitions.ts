@@ -591,11 +591,16 @@ export const ALL_TOOLS: ToolDefinition[] = [
 
 /**
  * Tool categories for UI filtering
+ * Keys match the MCP server IDs used in the sidebar (toolsData.tsx)
  */
-export const TOOL_CATEGORIES = {
-  incidents: ['rootly_get_incidents', 'rootly_update_incident', 'rootly_post_comment'],
-  github: ['github_get_prs'],
-  code: [
+export const TOOL_CATEGORIES: Record<string, string[]> = {
+  // Incidents - Rootly
+  rootly: ['rootly_get_incidents', 'rootly_update_incident', 'rootly_post_comment'],
+  incidents: ['rootly_get_incidents', 'rootly_update_incident', 'rootly_post_comment'], // Legacy alias
+
+  // GitHub - PRs and code operations
+  github: [
+    'github_get_prs',
     'github_read_file',
     'github_write_file',
     'github_delete_file',
@@ -606,9 +611,30 @@ export const TOOL_CATEGORIES = {
     'github_get_tree',
     'github_create_pr',
   ],
+  code: [ // Legacy alias for GitHub code tools
+    'github_read_file',
+    'github_write_file',
+    'github_delete_file',
+    'github_list_directory',
+    'github_create_branch',
+    'github_list_branches',
+    'github_search_code',
+    'github_get_tree',
+    'github_create_pr',
+  ],
+
+  // Jira - Issue tracking
   jira: ['jira_search_issues', 'jira_get_issue', 'jira_add_comment', 'jira_create_story'],
-  observability: ['newrelic_get_applications'],
-  analytics: ['metabase_list_databases', 'metabase_execute_query', 'metabase_search_questions', 'metabase_run_question'],
+
+  // New Relic - APM & Observability
+  newrelic: ['newrelic_get_applications'],
+  observability: ['newrelic_get_applications'], // Legacy alias
+
+  // Metabase - BI & Analytics
+  metabase: ['metabase_list_databases', 'metabase_execute_query', 'metabase_search_questions', 'metabase_run_question'],
+  analytics: ['metabase_list_databases', 'metabase_execute_query', 'metabase_search_questions', 'metabase_run_question'], // Legacy alias
+
+  // Web tools
   web: ['web_search', 'http_request'],
 };
 
