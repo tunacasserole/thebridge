@@ -1,28 +1,17 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import GitHub from "next-auth/providers/github"
-import Google from "next-auth/providers/google"
 import { prisma } from "@/lib/db"
 
-// Build providers array dynamically based on available credentials
+// Build providers array - GitHub only
 const providers = []
 
-// GitHub OAuth (optional)
+// GitHub OAuth (required for authentication)
 if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
   providers.push(
     GitHub({
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
-    })
-  )
-}
-
-// Google OAuth (optional)
-if (process.env.GOOGLE_ID && process.env.GOOGLE_SECRET) {
-  providers.push(
-    Google({
-      clientId: process.env.GOOGLE_ID,
-      clientSecret: process.env.GOOGLE_SECRET,
     })
   )
 }

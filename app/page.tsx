@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { useSession } from "next-auth/react";
 import ChatInterface, { ChatInterfaceHandle } from "@/components/ChatInterface";
 import ToolsSidebar, { ALL_TOOL_IDS } from "@/components/ToolsSidebar";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import MultiAgentGrid from "@/components/MultiAgentGrid";
 import PromptEditorPanel from "@/components/PromptEditorPanel";
+import { LandingPage } from "@/components/LandingPage";
 import { useMultiAgent } from "@/contexts/MultiAgentContext";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -14,6 +16,11 @@ import type { OpenAgent } from "@/components/AgentPanelContainer";
 export type SidebarMode = 'hidden' | 'mini' | 'full';
 
 export default function Home() {
+  // Auth state
+  const { data: session, status } = useSession();
+  const isAuthenticated = !!session;
+  const isLoading = status === "loading";
+
   // Default all tools to enabled
   const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set(ALL_TOOL_IDS));
   // Sidebar mode - hidden, mini (icons + abbreviated names), or full
@@ -221,6 +228,29 @@ export default function Home() {
       return 'hidden';
     });
   }, []);
+
+  // Show loading spinner during auth check
+  if (isLoading) {
+    return (
+      <div
+        className="flex-1 flex items-center justify-center"
+        style={{ background: 'var(--md-surface)' }}
+      >
+        <div
+          className="w-8 h-8 border-2 rounded-full animate-spin"
+          style={{
+            borderColor: 'var(--md-outline)',
+            borderTopColor: 'var(--md-primary)',
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Show landing page for logged-out users
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
 
   return (
     <div className="flex-1 flex overflow-hidden relative">
