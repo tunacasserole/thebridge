@@ -8,6 +8,7 @@ import QueryOptimizer from './QueryOptimizer';
 import ResponseModeSelector, { useResponseMode, type ResponseMode } from './ResponseModeSelector';
 import TokenUsageFeedback from './TokenUsageFeedback';
 import ConversationTokenCounter from './ConversationTokenCounter';
+import KubernetesFact from './KubernetesFact';
 
 interface FileAttachment {
   name: string;
@@ -855,6 +856,9 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         <div className="flex flex-col flex-1 min-h-0 justify-center items-center px-4">
           {/* Centered content container */}
           <div className="w-full max-w-2xl flex flex-col items-center">
+            {/* Kubernetes Fact - educational content */}
+            <KubernetesFact />
+
             {/* Greeting - positioned above input with spacing */}
             <div className="mb-8">
               <div className="flex items-center justify-center gap-3">
