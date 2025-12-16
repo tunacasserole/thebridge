@@ -1,0 +1,87 @@
+name: Claude Auto-Implement
+
+# Trigger on issues with 'claude-implement' label or @claude mentions
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  implement:
+    # Only run if:
+    # 1. Issue has 'claude-implement' label, OR
+    # 2. Comment contains @claude mention
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-implement')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # For labeled issues, provide implementation instructions
+          # For @claude mentions, the action responds automatically
+          prompt: |
+            You are implementing GitHub issue #${{ github.event.issue.number }}.
+
+            ISSUE TITLE: ${{ github.event.issue.title }}
+
+            ISSUE BODY:
+            ${{ github.event.issue.body }}
+
+            INSTRUCTIONS:
+            1. Read the CLAUDE.md file for project-specific guidelines
+            2. Analyze the issue requirements thoroughly
+            3. Create a feature branch following the pattern: {issue_number}-{issue-title-kebab-case}
+               Example: 037-create-github-action-auto-launch-claude
+            4. Implement the requested changes
+            5. Write clean, well-documented code following existing patterns
+            6. Run any relevant tests or linting
+            7. Commit changes with a descriptive message referencing the issue
+            8. Create a pull request that closes #${{ github.event.issue.number }}
+
+            Use `gh` CLI for GitHub operations.
+            Follow existing code patterns and conventions in this repository.
+
+          # Allow Claude to use necessary tools
+          allowed_tools: |
+            Read
+            Write
+            Edit
+            Bash(git:*)
+            Bash(gh:*)
+            Bash(npm:*)
+            Bash(npx:*)
+            Glob
+            Grep
+
+          # Limit turns to prevent runaway execution
+          max_turns: 50
+
+      - name: Comment on issue if failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '❌ Claude encountered an error while implementing this issue. Please check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
+            });
