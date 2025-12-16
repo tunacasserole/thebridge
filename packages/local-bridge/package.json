@@ -4,7 +4,8 @@
   "description": "Local bridge server for TheBridge - enables local coding capabilities",
   "main": "dist/index.js",
   "bin": {
-    "thebridge-local": "./dist/cli.js"
+    "thebridge-local": "./dist/cli.js",
+    "local": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
