@@ -17,11 +17,11 @@ export async function GET() {
   }
 
   try {
-    // Query New Relic NerdGraph API for all entities
+    // Query New Relic NerdGraph API for APM entities in the configured account
     const query = `
       {
         actor {
-          entitySearch(query: "reporting = 'true'") {
+          entitySearch(query: "accountId = '${NEW_RELIC_ACCOUNT_ID}' AND domain IN ('APM', 'BROWSER', 'INFRA', 'SYNTH', 'MOBILE')") {
             results {
               entities {
                 guid
