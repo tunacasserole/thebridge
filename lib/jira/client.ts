@@ -513,8 +513,22 @@ export async function searchJiraIssues(
   let jql: string;
 
   if (filters.jql) {
-    // Use raw JQL if provided
+    // Use raw JQL if provided, but ensure it's bounded
     jql = filters.jql;
+    // Check if the JQL has any restriction (not just ORDER BY)
+    const jqlUpper = jql.toUpperCase().trim();
+    const orderByIndex = jqlUpper.indexOf('ORDER BY');
+    const hasRestriction = orderByIndex === -1
+      ? jqlUpper.length > 0
+      : jqlUpper.substring(0, orderByIndex).trim().length > 0;
+
+    if (!hasRestriction) {
+      // Add a default time-based restriction to prevent unbounded queries
+      const restrictionPrefix = 'updated >= -30d';
+      jql = jql.trim().toUpperCase().startsWith('ORDER BY')
+        ? `${restrictionPrefix} ${jql}`
+        : `${restrictionPrefix} AND ${jql}`;
+    }
   } else {
     // Build JQL from filters
     const conditions: string[] = [];
@@ -536,9 +550,11 @@ export async function searchJiraIssues(
       conditions.push(`issuetype = "${filters.issueType}"`);
     }
 
+    // Always include a time-based restriction to prevent unbounded queries
+    // Jira Cloud rejects queries without restrictions
     jql = conditions.length > 0
       ? conditions.join(' AND ') + ' ORDER BY updated DESC'
-      : 'ORDER BY updated DESC';
+      : 'updated >= -30d ORDER BY updated DESC';
   }
 
   const maxResults = Math.min(filters.maxResults || 20, 50);
