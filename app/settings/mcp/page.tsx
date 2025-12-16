@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import MCPServerCard from '@/components/mcp/MCPServerCard';
+import RadialFAB from '@/components/RadialFAB';
+import type { ViewMode } from '@/types/views';
 
 interface MCPServer {
   id: string;
@@ -64,10 +67,16 @@ interface UserConfig {
 
 export default function MCPSettingsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [userConfigs, setUserConfigs] = useState<UserConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Handle mode change from FAB - navigate to home with mode parameter
+  const handleModeChange = useCallback((mode: ViewMode) => {
+    router.push(`/?mode=${mode}`);
+  }, [router]);
 
   // Load available servers and user configurations
   useEffect(() => {
@@ -284,6 +293,12 @@ export default function MCPSettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Radial FAB - Mode switcher */}
+      <RadialFAB
+        currentMode="dashboard"
+        onModeChange={handleModeChange}
+      />
     </div>
   );
 }

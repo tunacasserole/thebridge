@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSession } from "next-auth/react";
+import { useSearchParams } from 'next/navigation';
 import ChatInterface, { ChatInterfaceHandle } from "@/components/ChatInterface";
 import ToolsSidebar, { ALL_TOOL_IDS } from "@/components/ToolsSidebar";
 import LearnSidebar from "@/components/LearnSidebar";
@@ -25,6 +26,9 @@ export default function Home() {
   const { data: session, status } = useSession();
   const isAuthenticated = !!session;
   const isLoading = status === "loading";
+
+  // URL params for mode switching from other pages
+  const searchParams = useSearchParams();
 
   // Default all tools to enabled, will be updated from API
   const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set(ALL_TOOL_IDS));
@@ -68,6 +72,16 @@ export default function Home() {
   const showDashboard = viewMode === 'dashboard';
   const showMultiAgent = viewMode === 'multiagent';
   const showLearn = viewMode === 'learn';
+
+  // Handle mode from URL params (e.g., from MCP settings page FAB)
+  useEffect(() => {
+    const modeParam = searchParams.get('mode');
+    if (modeParam && ['chat', 'dashboard', 'learn', 'multiagent'].includes(modeParam)) {
+      setViewMode(modeParam as ViewMode);
+      // Clean up URL after setting mode
+      window.history.replaceState({}, '', '/');
+    }
+  }, [searchParams, setViewMode]);
 
   // Load saved MCP configurations on mount
   useEffect(() => {
