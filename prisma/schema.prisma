@@ -108,6 +108,9 @@ model User {
   budget        Budget?
   usageSnapshots UsageSnapshot[]
   toolUsageStats ToolUsageStat[]
+
+  // User preferences
+  preferences   UserPreference[]
 }
 
 model Account {
@@ -344,6 +347,26 @@ model UsageSnapshot {
   @@unique([userId, period, periodStart])
   @@index([userId, period])
   @@index([periodStart])
+}
+
+// ============================================
+// User Preferences
+// ============================================
+
+// User preferences for integration settings (e.g., New Relic account/entity)
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String   // e.g., "newrelic_account", "newrelic_entity"
+  value     String   @db.Text // JSON value
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 // ============================================

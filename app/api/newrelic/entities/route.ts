@@ -1,27 +1,41 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // New Relic API configuration
 const NEW_RELIC_API_KEY = process.env.NEW_RELIC_API_KEY;
 const NEW_RELIC_ACCOUNT_ID = process.env.NEW_RELIC_ACCOUNT_ID;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   // Check configuration
-  if (!NEW_RELIC_API_KEY || !NEW_RELIC_ACCOUNT_ID) {
+  if (!NEW_RELIC_API_KEY) {
     return NextResponse.json(
       {
         success: false,
-        error: 'New Relic is not configured. Add NEW_RELIC_API_KEY and NEW_RELIC_ACCOUNT_ID to your environment variables.',
+        error: 'New Relic is not configured. Add NEW_RELIC_API_KEY to your environment variables.',
       },
       { status: 503 }
     );
   }
 
+  // Get accountId from query params, falling back to env var
+  const { searchParams } = new URL(request.url);
+  const accountId = searchParams.get('accountId') || NEW_RELIC_ACCOUNT_ID;
+
+  if (!accountId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'No account ID provided. Pass accountId query param or set NEW_RELIC_ACCOUNT_ID env var.',
+      },
+      { status: 400 }
+    );
+  }
+
   try {
-    // Query New Relic NerdGraph API for APM entities in the configured account
+    // Query New Relic NerdGraph API for APM entities in the specified account
     const query = `
       {
         actor {
-          entitySearch(query: "accountId = '${NEW_RELIC_ACCOUNT_ID}' AND domain IN ('APM', 'BROWSER', 'INFRA', 'SYNTH', 'MOBILE')") {
+          entitySearch(query: "accountId = '${accountId}' AND domain IN ('APM', 'BROWSER', 'INFRA', 'SYNTH', 'MOBILE')") {
             results {
               entities {
                 guid
