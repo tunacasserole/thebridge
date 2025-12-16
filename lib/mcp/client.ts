@@ -21,6 +21,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
+import { logMCPConnection } from '@/lib/logging/serverLogger';
 
 // Type for MCP server config from .mcp.json
 interface MCPServerConfig {
@@ -151,17 +152,30 @@ async function connectToMCPServer(
   const url = extractSSEUrl(config);
 
   if (transportType === 'stdio') {
-    console.log(`[MCP] ${serverName}: stdio transport not supported in serverless environment`);
+    logMCPConnection({
+      serverName,
+      status: 'failed',
+      error: 'stdio transport not supported in serverless',
+    });
     return null;
   }
 
   if (transportType === 'unsupported' || !url) {
-    console.log(`[MCP] ${serverName}: No compatible transport configuration found`);
+    logMCPConnection({
+      serverName,
+      status: 'failed',
+      error: 'No compatible transport configuration',
+    });
     return null;
   }
 
   try {
-    console.log(`[MCP] Connecting to ${serverName} at ${url} (${transportType})`);
+    logMCPConnection({
+      serverName,
+      status: 'connecting',
+      url,
+      transport: transportType,
+    });
 
     const headers = extractHeaders(config);
 
@@ -188,12 +202,23 @@ async function connectToMCPServer(
       await client.connect(transport);
     }
 
-    console.log(`[MCP] Connected to ${serverName}`);
+    logMCPConnection({
+      serverName,
+      status: 'connected',
+      url,
+      transport: transportType,
+    });
     mcpClients.set(serverName, client);
 
     return client;
   } catch (error) {
-    console.error(`[MCP] Failed to connect to ${serverName}:`, error);
+    logMCPConnection({
+      serverName,
+      status: 'failed',
+      url,
+      transport: transportType,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -344,7 +369,7 @@ export async function closeMCPConnections(): Promise<void> {
   for (const [name, client] of mcpClients) {
     try {
       await client.close();
-      console.log(`[MCP] Closed connection to ${name}`);
+      logMCPConnection({ serverName: name, status: 'disconnected' });
     } catch (error) {
       console.error(`[MCP] Error closing ${name}:`, error);
     }
