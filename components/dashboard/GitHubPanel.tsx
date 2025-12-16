@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useGitHubData } from '@/hooks/useGitHubData';
-import { Commit, PullRequest } from '@/lib/github';
+import { useState, useMemo } from 'react';
+import { useGitHubOpenPRs } from '@/hooks/useGitHubOpenPRs';
+import { useGitHubMergedPRs } from '@/hooks/useGitHubMergedPRs';
+import { OpenPR, MergedPR } from '@/lib/github';
 import { colors } from '@/lib/colors';
 import Icon from '@/components/ui/Icon';
-import { PanelSkeleton, PanelError, getErrorMessage } from './PanelStates';
+import { PanelError, getErrorMessage } from './PanelStates';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-type ViewMode = 'commits' | 'prs';
+type ViewMode = 'open' | 'merged';
 
 interface GitHubPanelProps {
   compact?: boolean;
@@ -20,34 +21,74 @@ interface GitHubPanelProps {
 
 export default function GitHubPanel({ compact = false, defaultExpanded = false, refreshTrigger, embedded = false }: GitHubPanelProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [viewMode, setViewMode] = useState<ViewMode>('commits');
-  const { data, loading, error, refetch } = useGitHubData(REFRESH_INTERVAL, refreshTrigger);
+  const [viewMode, setViewMode] = useState<ViewMode>('open');
+  const [selectedRepo, setSelectedRepo] = useState<string>('all');
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
+  const [showDrafts, setShowDrafts] = useState(true);
 
-  const getPRStateColor = (state: 'open' | 'closed' | 'merged') => {
-    switch (state) {
-      case 'open':
-        return colors.success;
-      case 'merged':
-        return colors.secondary;
-      case 'closed':
-        return colors.error;
-      default:
-        return colors.outlineVariant;
-    }
+  const { data: openData, loading: openLoading, error: openError, refetch: refetchOpen } = useGitHubOpenPRs(REFRESH_INTERVAL, refreshTrigger);
+  const { data: mergedData, loading: mergedLoading, error: mergedError, refetch: refetchMerged } = useGitHubMergedPRs(REFRESH_INTERVAL, refreshTrigger);
+
+  // Use the appropriate data based on selected state
+  const data = viewMode === 'open' ? openData : mergedData;
+  const loading = viewMode === 'open' ? openLoading : mergedLoading;
+  const error = viewMode === 'open' ? openError : mergedError;
+
+  const refetch = () => {
+    refetchOpen();
+    refetchMerged();
   };
 
-  const getPRStateIcon = (state: 'open' | 'closed' | 'merged') => {
-    switch (state) {
-      case 'open':
-        return <Icon name="merge" size={16} decorative />;
-      case 'merged':
-        return <Icon name="check_circle" size={16} decorative />;
-      case 'closed':
-        return <Icon name="cancel" size={16} decorative />;
-      default:
-        return <Icon name="merge" size={16} decorative />;
+  // Extract unique repositories and authors from both data sources
+  const repositories = useMemo(() => {
+    const repos = new Set<string>();
+    if (openData?.openPRs) {
+      openData.openPRs.forEach(pr => repos.add(pr.repository));
     }
-  };
+    if (mergedData?.mergedPRs) {
+      mergedData.mergedPRs.forEach(pr => repos.add(pr.repository));
+    }
+    return Array.from(repos).sort();
+  }, [openData, mergedData]);
+
+  const authors = useMemo(() => {
+    const authorSet = new Set<string>();
+    if (openData?.openPRs) {
+      openData.openPRs.forEach(pr => authorSet.add(pr.author));
+    }
+    if (mergedData?.mergedPRs) {
+      mergedData.mergedPRs.forEach(pr => authorSet.add(pr.author));
+    }
+    return Array.from(authorSet).sort();
+  }, [openData, mergedData]);
+
+  // Filter PRs based on selected filters
+  const filteredPRs = useMemo(() => {
+    let prs: (OpenPR | MergedPR)[] = [];
+
+    if (viewMode === 'open' && openData?.openPRs) {
+      prs = openData.openPRs;
+    } else if (viewMode === 'merged' && mergedData?.mergedPRs) {
+      prs = mergedData.mergedPRs;
+    }
+
+    return prs.filter(pr => {
+      // Repository filter
+      if (selectedRepo !== 'all' && pr.repository !== selectedRepo) return false;
+
+      // Author filter
+      if (selectedAuthor !== 'all' && pr.author !== selectedAuthor) return false;
+
+      // Draft filter (only applies to open PRs)
+      if (viewMode === 'open' && !showDrafts && 'draft' in pr && pr.draft) return false;
+
+      return true;
+    });
+  }, [viewMode, openData, mergedData, selectedRepo, selectedAuthor, showDrafts]);
+
+  // Get total counts
+  const totalOpen = openData?.summary.totalOpen ?? 0;
+  const totalMerged = mergedData?.summary.totalMerged ?? 0;
 
   const handleRefresh = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,8 +99,17 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
     setIsExpanded(true);
   };
 
-  // Collapsed state
-  if (!isExpanded) {
+  // Clear all filters helper
+  const clearFilters = () => {
+    setSelectedRepo('all');
+    setSelectedAuthor('all');
+    setShowDrafts(true);
+  };
+
+  const hasActiveFilters = selectedRepo !== 'all' || selectedAuthor !== 'all' || !showDrafts;
+
+  // Collapsed state (when not embedded in dashboard)
+  if (!isExpanded && !embedded) {
     return (
       <div
         onClick={handleExpand}
@@ -71,40 +121,38 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl"><Icon name="account_tree" size={20} style={{ color: colors.tertiary }} decorative /></span>
+            <span className="text-xl"><Icon name="merge" size={20} style={{ color: colors.tertiary }} decorative /></span>
             <div>
-              <h3 className="text-sm font-bold text-bridge-text-primary">GitHub</h3>
-              {loading && !data ? (
+              <h3 className="text-sm font-bold text-bridge-text-primary">GitHub PRs</h3>
+              {(openLoading || mergedLoading) && !openData && !mergedData ? (
                 <p className="text-xs text-bridge-text-muted flex items-center gap-1">
                   <Icon name="refresh" size={12} animate="animate-spin" decorative /> Loading...
                 </p>
-              ) : error ? (
+              ) : openError || mergedError ? (
                 <p className="text-xs text-bridge-accent-red flex items-center gap-1">
                   <Icon name="warning" size={12} decorative /> Error connecting
                 </p>
-              ) : data ? (
+              ) : (
                 <p className="text-xs text-bridge-text-muted">
-                  {data.summary.commitsToday > 0 ? (
-                    <span style={{ color: colors.success }}>
-                      {data.summary.commitsToday} commit{data.summary.commitsToday !== 1 ? 's' : ''} today
-                    </span>
-                  ) : (
-                    <span>
-                      {data.summary.openPRs} open PR{data.summary.openPRs !== 1 ? 's' : ''}
-                    </span>
-                  )}
+                  <span style={{ color: colors.success }}>
+                    {totalOpen} open
+                  </span>
+                  {' · '}
+                  <span style={{ color: colors.secondary }}>
+                    {totalMerged} merged
+                  </span>
                 </p>
-              ) : null}
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {data && data.summary.openPRs > 0 && (
+            {totalOpen > 0 && (
               <span
                 className="px-2 py-0.5 rounded text-xs font-bold"
                 style={{ background: `${colors.success}22`, color: colors.success }}
               >
-                {data.summary.openPRs} open
+                {totalOpen} open
               </span>
             )}
             <Icon name="keyboard_arrow_down" size={16} className="text-bridge-text-muted" decorative />
@@ -114,39 +162,99 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
     );
   }
 
-  // Compact expanded version
-  if (compact) {
+  // Compact view (embedded in dashboard panel)
+  if (compact || embedded) {
     return (
-      <div
-        className="rounded-xl p-4 mb-4 max-w-2xl mx-auto"
-        style={{
-          background: `linear-gradient(135deg, ${colors.tertiary}15, ${colors.primary}10)`,
-          border: `2px solid ${colors.tertiary}44`,
-        }}
-      >
-        <div
-          className="flex items-center justify-between mb-3 cursor-pointer"
-          onClick={() => setIsExpanded(false)}
-        >
-          <div className="flex items-center gap-2">
-            <Icon name="account_tree" size={16} style={{ color: colors.tertiary }} decorative />
-            <h3 className="text-sm font-bold text-bridge-text-primary">
-              {data?.repository.name || 'GitHub'}
-            </h3>
-          </div>
+      <div className="h-full flex flex-col">
+        {/* View Mode Toggle */}
+        <div className="flex gap-1.5 mb-2">
+          <button
+            onClick={() => setViewMode('open')}
+            className={`flex-1 px-2 py-1 rounded text-xs font-bold uppercase transition-all ${
+              viewMode === 'open' ? 'shadow-sm' : ''
+            }`}
+            style={viewMode === 'open' ? {
+              background: colors.success,
+              color: 'white',
+            } : {
+              background: 'var(--md-surface-container-highest)',
+              color: 'var(--md-on-surface-variant)',
+            }}
+          >
+            Open ({totalOpen})
+          </button>
+          <button
+            onClick={() => setViewMode('merged')}
+            className={`flex-1 px-2 py-1 rounded text-xs font-bold uppercase transition-all ${
+              viewMode === 'merged' ? 'shadow-sm' : ''
+            }`}
+            style={viewMode === 'merged' ? {
+              background: colors.secondary,
+              color: 'white',
+            } : {
+              background: 'var(--md-surface-container-highest)',
+              color: 'var(--md-on-surface-variant)',
+            }}
+          >
+            Merged ({totalMerged})
+          </button>
+        </div>
 
-          <div className="flex items-center gap-2">
-            {loading && <Icon name="refresh" size={12} animate="animate-spin" className="text-bridge-text-muted" decorative />}
-            {error && <Icon name="warning" size={12} className="text-bridge-accent-red" decorative />}
+        {/* Compact Filters Row */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          {/* Repository Selector */}
+          <select
+            value={selectedRepo}
+            onChange={(e) => setSelectedRepo(e.target.value)}
+            className="px-2 py-1 rounded text-xs bg-bridge-bg-card border border-bridge-outline-variant text-bridge-text-primary focus:border-bridge-accent-cyan focus:outline-none cursor-pointer"
+          >
+            <option value="all">All Repos ({repositories.length})</option>
+            {repositories.map(repo => (
+              <option key={repo} value={repo}>{repo}</option>
+            ))}
+          </select>
+
+          {/* Author Selector */}
+          <select
+            value={selectedAuthor}
+            onChange={(e) => setSelectedAuthor(e.target.value)}
+            className="px-2 py-1 rounded text-xs bg-bridge-bg-card border border-bridge-outline-variant text-bridge-text-primary focus:border-bridge-accent-cyan focus:outline-none cursor-pointer"
+          >
+            <option value="all">All Users ({authors.length})</option>
+            {authors.map(author => (
+              <option key={author} value={author}>{author}</option>
+            ))}
+          </select>
+
+          {/* Draft Toggle (only for open PRs) */}
+          {viewMode === 'open' && (
             <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="p-1.5 rounded bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors disabled:opacity-50"
+              onClick={() => setShowDrafts(!showDrafts)}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+                showDrafts
+                  ? 'bg-bridge-accent-cyan/20 text-bridge-accent-cyan border border-bridge-accent-cyan'
+                  : 'bg-bridge-bg-card text-bridge-text-muted border border-bridge-outline-variant'
+              }`}
             >
-              <Icon name="refresh" size={12} className="text-bridge-text-secondary" animate={loading ? "animate-spin" : undefined} decorative />
+              <Icon name={showDrafts ? "visibility" : "visibility_off"} size={12} decorative />
+              Drafts
             </button>
-            <Icon name="keyboard_arrow_up" size={16} className="text-bridge-text-muted" decorative />
-          </div>
+          )}
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="px-2 py-1 rounded text-xs text-bridge-text-muted hover:text-bridge-text-primary transition-colors"
+            >
+              Clear
+            </button>
+          )}
+
+          {/* Results Count */}
+          <span className="ml-auto text-[10px] text-bridge-text-muted">
+            {filteredPRs.length}/{viewMode === 'open' ? totalOpen : totalMerged}
+          </span>
         </div>
 
         {error && (
@@ -154,66 +262,84 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
             {...getErrorMessage(error)}
             onRetry={refetch}
             isRetrying={loading}
-            className="mb-3"
+            className="mb-2"
           />
         )}
 
-        {data && (
-          <>
-            <div className="flex items-center gap-4 mb-3 text-xs">
-              <span style={{ color: colors.success }}>
-                <strong className="text-lg">{data.summary.commitsToday}</strong> today
-              </span>
-              <span className="text-bridge-text-muted">|</span>
-              <span style={{ color: colors.primary }}>
-                <strong>{data.summary.openPRs}</strong> open PRs
-              </span>
-              <span className="text-bridge-text-muted">|</span>
-              <span style={{ color: colors.warning }}>
-                <strong>{data.repository.stars}</strong> stars
-              </span>
+        {/* PR List */}
+        <div className="flex-1 overflow-y-auto space-y-1">
+          {loading && !data ? (
+            <div className="space-y-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-10 rounded bg-bridge-bg-card animate-pulse" />
+              ))}
             </div>
+          ) : filteredPRs.length > 0 ? (
+            filteredPRs.map((pr) => {
+              const isOpenPR = 'createdAgo' in pr;
+              const timeAgo = isOpenPR ? (pr as OpenPR).createdAgo : (pr as MergedPR).mergedAgo;
+              const isDraft = isOpenPR && (pr as OpenPR).draft;
 
-            {data.commits.length > 0 ? (
-              <div className="space-y-1.5">
-                {data.commits.slice(0, 5).map((commit: Commit) => (
-                  <div
-                    key={commit.sha}
-                    className="flex items-center gap-2 p-2 rounded bg-bridge-bg-card text-xs"
-                  >
-                    <Icon name="commit" size={12} style={{ color: colors.tertiary }} decorative />
-                    <span className="flex-1 truncate text-bridge-text-primary">
-                      {commit.messageShort}
-                    </span>
-                    <span className="text-bridge-text-muted flex items-center gap-1">
-                      <Icon name="schedule" size={10} decorative />
-                      {commit.duration}
-                    </span>
+              return (
+                <a
+                  key={pr.id}
+                  href={pr.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-1.5 p-1.5 rounded transition-colors hover:bg-bridge-bg-tertiary"
+                  style={{ background: 'var(--md-surface-container-high)' }}
+                >
+                  <img
+                    src={pr.authorAvatar}
+                    alt={pr.author}
+                    className="w-5 h-5 rounded-full flex-shrink-0"
+                  />
+                  <Icon
+                    name={viewMode === 'merged' ? 'check_circle' : 'merge'}
+                    size={12}
+                    style={{ color: viewMode === 'merged' ? colors.secondary : colors.success }}
+                    decorative
+                    className="flex-shrink-0"
+                  />
+                  <span className="text-xs font-medium text-bridge-text-primary truncate flex-1 min-w-0">
+                    {pr.title}
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-bridge-text-muted flex-shrink-0">
+                    {isDraft && (
+                      <span className="px-1 py-0.5 rounded text-[9px]" style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}>
+                        Draft
+                      </span>
+                    )}
+                    <span className="hidden sm:inline">{pr.repository}</span>
+                    <span>#{pr.number}</span>
+                    <span>{timeAgo}</span>
                   </div>
-                ))}
-                {data.commits.length > 5 && (
-                  <p className="text-xs text-bridge-text-muted text-center pt-1">
-                    +{data.commits.length - 5} more
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 text-center rounded bg-bridge-bg-card">
-                <Icon name="account_tree" size={20} className="mx-auto mb-1 text-bridge-text-muted" decorative />
-                <p className="text-xs text-bridge-text-secondary">No recent commits</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {loading && !data && (
-          <div className="h-20 rounded bg-bridge-bg-card animate-pulse" />
-        )}
+                </a>
+              );
+            })
+          ) : (
+            <div className="py-6 text-center">
+              <Icon name="merge" size={24} className="mx-auto mb-2 text-bridge-text-muted" decorative />
+              <p className="text-xs text-bridge-text-secondary">
+                {hasActiveFilters ? 'No PRs match filters' : 'No pull requests'}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-2 px-3 py-1 rounded text-xs font-medium"
+                  style={{ background: colors.primary, color: 'white' }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
-  // Full expanded version
+  // Full expanded version (standalone)
   return (
     <div
       className="rounded-2xl p-5 mb-6"
@@ -227,13 +353,11 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
         onClick={() => setIsExpanded(false)}
       >
         <div className="flex items-center gap-3">
-          <Icon name="account_tree" size={24} style={{ color: colors.tertiary }} decorative />
+          <Icon name="merge" size={24} style={{ color: colors.tertiary }} decorative />
           <div>
-            <h3 className="text-lg font-bold text-bridge-text-primary">
-              {data?.repository.name || 'GitHub'}
-            </h3>
+            <h3 className="text-lg font-bold text-bridge-text-primary">GitHub Pull Requests</h3>
             <p className="text-xs text-bridge-text-muted">
-              {data?.repository.fullName || 'Repository activity'}
+              {filteredPRs.length} of {viewMode === 'open' ? totalOpen : totalMerged} {viewMode} PRs
             </p>
           </div>
         </div>
@@ -264,19 +388,6 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
             <Icon name="refresh" size={16} className="text-bridge-text-secondary" animate={loading ? "animate-spin" : undefined} decorative />
           </button>
 
-          {data && (
-            <a
-              href={data.repository.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="p-2 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors text-bridge-text-secondary hover:text-bridge-accent-cyan"
-              title="Open in GitHub"
-            >
-              <Icon name="open_in_new" size={16} decorative />
-            </a>
-          )}
-
           <Icon name="keyboard_arrow_up" size={20} className="text-bridge-text-muted" decorative />
         </div>
       </div>
@@ -290,183 +401,197 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
         />
       )}
 
-      {data && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            <button
-              onClick={() => setViewMode('commits')}
-              className={`p-4 rounded-xl text-center transition-all hover:scale-105 flex flex-col items-center justify-center ${
-                viewMode === 'commits' ? '' : 'bg-bridge-bg-card'
-              }`}
-              style={
-                viewMode === 'commits'
-                  ? {
-                      background: `${colors.tertiary}22`,
-                      border: `2px solid ${colors.tertiary}`,
-                      height: '100px',
-                    }
-                  : { border: '2px solid transparent', height: '100px' }
-              }
+      {/* State Filter Buttons */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setViewMode('open')}
+          className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold uppercase transition-all ${
+            viewMode === 'open' ? 'shadow-md' : ''
+          }`}
+          style={viewMode === 'open' ? {
+            background: colors.success,
+            color: 'white',
+          } : {
+            background: 'var(--md-surface-container-highest)',
+            color: 'var(--md-on-surface-variant)',
+          }}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Icon name="pending" size={16} decorative />
+            Open ({totalOpen})
+          </div>
+        </button>
+
+        <button
+          onClick={() => setViewMode('merged')}
+          className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold uppercase transition-all ${
+            viewMode === 'merged' ? 'shadow-md' : ''
+          }`}
+          style={viewMode === 'merged' ? {
+            background: colors.secondary,
+            color: 'white',
+          } : {
+            background: 'var(--md-surface-container-highest)',
+            color: 'var(--md-on-surface-variant)',
+          }}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Icon name="check_circle" size={16} decorative />
+            Merged ({totalMerged})
+          </div>
+        </button>
+      </div>
+
+      {/* Filters Section */}
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Repository Selector */}
+          <div className="flex items-center gap-2">
+            <Icon name="folder" size={16} className="text-bridge-text-muted" decorative />
+            <select
+              value={selectedRepo}
+              onChange={(e) => setSelectedRepo(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-sm bg-bridge-bg-card border border-bridge-outline-variant text-bridge-text-primary focus:border-bridge-accent-cyan focus:outline-none cursor-pointer"
             >
-              <div className="text-3xl font-bold mb-1" style={{ color: colors.tertiary }}>
-                {data.summary.commitsThisWeek}
-              </div>
-              <div className="text-xs text-bridge-text-muted">Commits</div>
-            </button>
-            <button
-              onClick={() => setViewMode('prs')}
-              className={`p-4 rounded-xl text-center transition-all hover:scale-105 flex flex-col items-center justify-center ${
-                viewMode === 'prs' ? '' : 'bg-bridge-bg-card'
-              }`}
-              style={
-                viewMode === 'prs'
-                  ? {
-                      background: `${colors.success}22`,
-                      border: `2px solid ${colors.success}`,
-                      height: '100px',
-                    }
-                  : { border: '2px solid transparent', height: '100px' }
-              }
-            >
-              <div className="text-3xl font-bold mb-1" style={{ color: colors.success }}>
-                {data.summary.openPRs}
-              </div>
-              <div className="text-xs text-bridge-text-muted">Open PRs</div>
-            </button>
-            <div className="p-4 rounded-xl bg-bridge-bg-card text-center flex flex-col items-center justify-center" style={{ height: '100px' }}>
-              <div className="text-3xl font-bold mb-1 flex items-center gap-1" style={{ color: colors.warning }}>
-                <Icon name="star" size={20} decorative />
-                {data.repository.stars}
-              </div>
-              <div className="text-xs text-bridge-text-muted">Stars</div>
-            </div>
-            <div className="p-4 rounded-xl bg-bridge-bg-card text-center flex flex-col items-center justify-center" style={{ height: '100px' }}>
-              <div className="text-3xl font-bold mb-1 flex items-center gap-1" style={{ color: colors.primary }}>
-                <Icon name="fork_right" size={20} decorative />
-                {data.repository.forks}
-              </div>
-              <div className="text-xs text-bridge-text-muted">Forks</div>
-            </div>
-            <div className="p-4 rounded-xl bg-bridge-bg-card text-center flex flex-col items-center justify-center" style={{ height: '100px' }}>
-              <div className="text-3xl font-bold mb-1" style={{ color: colors.error }}>
-                {data.repository.openIssues}
-              </div>
-              <div className="text-xs text-bridge-text-muted">Issues</div>
-            </div>
+              <option value="all">All Repos ({repositories.length})</option>
+              {repositories.map(repo => (
+                <option key={repo} value={repo}>{repo}</option>
+              ))}
+            </select>
           </div>
 
-          {viewMode === 'commits' && (
-            data.commits.length > 0 ? (
-              <>
-                <h4 className="text-sm font-semibold text-bridge-text-secondary flex items-center gap-2 mb-2">
-                  <Icon name="commit" size={16} decorative />
-                  Recent Commits
-                </h4>
-                <div className="space-y-1.5">
-                  {data.commits.map((commit: Commit) => (
-                    <a
-                      key={commit.sha}
-                      href={commit.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors"
-                    >
-                      {commit.authorAvatar ? (
-                        <img src={commit.authorAvatar} alt={commit.author} className="w-6 h-6 rounded-full flex-shrink-0" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-bridge-bg-tertiary flex items-center justify-center text-xs flex-shrink-0">
-                          {commit.author[0]}
-                        </div>
-                      )}
-                      <span className="text-sm font-medium text-bridge-text-primary truncate flex-1 min-w-0">
-                        {commit.messageShort}
-                      </span>
-                      <div className="flex items-center gap-2 text-xs text-bridge-text-muted flex-shrink-0">
-                        <span className="font-mono">{commit.shortSha}</span>
-                        <span className="flex items-center gap-1">
-                          <Icon name="schedule" size={10} decorative />
-                          {commit.duration}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="p-6 text-center rounded-xl bg-bridge-bg-card">
-                <Icon name="commit" size={32} className="mx-auto mb-2 text-bridge-text-muted" decorative />
-                <p className="text-sm text-bridge-text-secondary">No recent commits</p>
-              </div>
-            )
+          {/* Author Selector */}
+          <div className="flex items-center gap-2">
+            <Icon name="person" size={16} className="text-bridge-text-muted" decorative />
+            <select
+              value={selectedAuthor}
+              onChange={(e) => setSelectedAuthor(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-sm bg-bridge-bg-card border border-bridge-outline-variant text-bridge-text-primary focus:border-bridge-accent-cyan focus:outline-none cursor-pointer"
+            >
+              <option value="all">All Users ({authors.length})</option>
+              {authors.map(author => (
+                <option key={author} value={author}>{author}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Draft Toggle (only for open PRs) */}
+          {viewMode === 'open' && (
+            <button
+              onClick={() => setShowDrafts(!showDrafts)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                showDrafts
+                  ? 'bg-bridge-accent-cyan/20 text-bridge-accent-cyan border border-bridge-accent-cyan'
+                  : 'bg-bridge-bg-card text-bridge-text-muted border border-bridge-outline-variant'
+              }`}
+            >
+              <Icon name={showDrafts ? "visibility" : "visibility_off"} size={16} decorative />
+              Show Drafts
+            </button>
           )}
 
-          {viewMode === 'prs' && (
-            data.pullRequests.length > 0 ? (
-              <>
-                <h4 className="text-sm font-semibold text-bridge-text-secondary flex items-center gap-2 mb-2">
-                  <Icon name="merge" size={16} decorative />
-                  Pull Requests
-                </h4>
-                <div className="space-y-1.5">
-                  {data.pullRequests.map((pr: PullRequest) => (
-                    <a
-                      key={pr.id}
-                      href={pr.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors"
-                    >
-                      <div style={{ color: getPRStateColor(pr.state) }} className="flex-shrink-0">
-                        {getPRStateIcon(pr.state)}
-                      </div>
-                      <span className="text-sm font-medium text-bridge-text-primary truncate flex-1 min-w-0">
-                        {pr.title}
-                      </span>
-                      <div className="flex items-center gap-2 text-xs text-bridge-text-muted flex-shrink-0">
-                        {pr.draft && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}>
-                            Draft
-                          </span>
-                        )}
-                        <span>#{pr.number}</span>
-                        <span style={{ color: getPRStateColor(pr.state) }}>
-                          {pr.state}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Icon name="schedule" size={10} decorative />
-                          {pr.duration}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="p-6 text-center rounded-xl bg-bridge-bg-card">
-                <Icon name="merge" size={32} className="mx-auto mb-2 text-bridge-text-muted" decorative />
-                <p className="text-sm text-bridge-text-secondary">No pull requests found</p>
-              </div>
-            )
-          )}
-        </>
-      )}
+          {/* Results Count */}
+          <div className="ml-auto text-xs text-bridge-text-muted">
+            Showing {filteredPRs.length} of {viewMode === 'open' ? totalOpen : totalMerged} PRs
+          </div>
+        </div>
+      </div>
 
-      {!loading && !data && !error && (
-        <div className="p-8 text-center rounded-xl bg-bridge-bg-card">
-          <Icon name="refresh" size={40} className="mx-auto mb-3 text-bridge-text-muted" decorative />
-          <p className="text-sm text-bridge-text-secondary mb-1">No data loaded</p>
-          <p className="text-xs text-bridge-text-muted">Click the refresh button above to load GitHub data</p>
+      {/* PR List */}
+      {filteredPRs.length > 0 ? (
+        <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+          {filteredPRs.map((pr) => {
+            const isOpenPR = 'createdAgo' in pr;
+            const timeAgo = isOpenPR ? (pr as OpenPR).createdAgo : (pr as MergedPR).mergedAgo;
+            const isDraft = isOpenPR && (pr as OpenPR).draft;
+
+            return (
+              <a
+                key={pr.id}
+                href={pr.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 p-2.5 rounded-lg transition-all duration-200 hover:shadow-md"
+                style={{
+                  background: 'var(--md-surface-container-high)',
+                  border: '1px solid var(--md-outline-variant)',
+                }}
+              >
+                <img
+                  src={pr.authorAvatar}
+                  alt={pr.author}
+                  className="w-7 h-7 rounded-full flex-shrink-0"
+                />
+                <Icon
+                  name={viewMode === 'merged' ? 'check_circle' : 'merge'}
+                  size={14}
+                  style={{ color: viewMode === 'merged' ? colors.secondary : colors.success }}
+                  decorative
+                  className="flex-shrink-0"
+                />
+                <h4 className="text-sm font-semibold group-hover:text-opacity-80 transition-all truncate flex-1 min-w-0" style={{ color: 'var(--md-on-surface)' }}>
+                  {pr.title}
+                </h4>
+                <div className="flex items-center gap-2 text-xs flex-shrink-0" style={{ color: 'var(--md-on-surface-variant)' }}>
+                  {isDraft && (
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                      style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}
+                    >
+                      Draft
+                    </span>
+                  )}
+                  <span className="font-mono">#{pr.number}</span>
+                  <span className="hidden sm:inline">{pr.repository}</span>
+                  <span className="flex items-center gap-1">
+                    <Icon name="schedule" size={10} decorative />
+                    {timeAgo}
+                  </span>
+                </div>
+                <Icon
+                  name="open_in_new"
+                  size={14}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  color="var(--md-on-surface-variant)"
+                  decorative
+                />
+              </a>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="py-12 text-center">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'var(--md-surface-container-highest)' }}
+          >
+            <Icon name="merge" size={32} color="var(--md-on-surface-variant)" decorative />
+          </div>
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--md-on-surface)' }}>
+            No pull requests found
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--md-on-surface-variant)' }}>
+            {hasActiveFilters ? 'No PRs match your filters' : `No ${viewMode} pull requests`}
+          </p>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="mt-3 px-4 py-2 rounded-full text-sm font-medium transition-all hover:shadow-md"
+              style={{
+                background: 'var(--md-primary)',
+                color: 'var(--md-on-primary)',
+              }}
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       )}
 
       {loading && !data && (
         <div className="space-y-3">
-          <div className="grid grid-cols-5 gap-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 rounded-xl bg-bridge-bg-card animate-pulse" />
-            ))}
-          </div>
-          <div className="h-32 rounded-xl bg-bridge-bg-card animate-pulse" />
+          <div className="h-10 rounded-xl animate-pulse" style={{ background: 'var(--md-surface-container-high)' }} />
+          <div className="h-32 rounded-xl animate-pulse" style={{ background: 'var(--md-surface-container-high)' }} />
         </div>
       )}
     </div>
