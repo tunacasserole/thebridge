@@ -538,120 +538,111 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
               return (
                 <div
                   key={incident.id}
-                  className="group rounded-lg p-2.5 transition-all duration-200 hover:shadow-md cursor-pointer"
+                  className="group rounded-lg p-2 transition-all duration-200 hover:shadow-md cursor-pointer"
                   style={{
                     background: 'var(--md-surface-container-high)',
                     border: '1px solid var(--md-outline-variant)',
                   }}
                   onClick={() => window.open(incident.url, '_blank')}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-center gap-2">
                     {/* Status Indicator */}
-                    <div className="mt-0.5">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ background: getStatusColor(incident.status) }}
-                      />
-                    </div>
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ background: getStatusColor(incident.status) }}
+                    />
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Header - with source badge on right */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <Icon name="emergency" size={14} color="#7748F6" decorative />
-                          <span
-                            className="text-xs font-mono font-semibold"
-                            style={{ color: '#7748F6' }}
-                          >
-                            #{incident.sequentialId}
-                          </span>
+                    {/* ID & Icon */}
+                    <Icon name="emergency" size={14} color="#7748F6" decorative className="flex-shrink-0" />
+                    <span
+                      className="text-xs font-mono font-semibold flex-shrink-0"
+                      style={{ color: '#7748F6' }}
+                    >
+                      #{incident.sequentialId}
+                    </span>
 
-                          {/* Status with dropdown */}
-                          <div className="relative status-dropdown-container">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleStatusDropdown(incident.id);
-                              }}
-                              disabled={updatingStatus === incident.id}
-                              className="px-1.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-0.5 hover:opacity-80 transition-opacity disabled:opacity-50"
-                              style={{
-                                background: `${getStatusColor(incident.status)}22`,
-                                color: getStatusColor(incident.status),
-                              }}
-                            >
-                              {updatingStatus === incident.id ? (
-                                <>
-                                  <Icon name="sync" size={10} className="animate-spin" decorative />
-                                  ...
-                                </>
-                              ) : (
-                                <>
-                                  {incident.status.replace('_', ' ')}
-                                  <Icon name="expand_more" size={12} decorative />
-                                </>
-                              )}
-                            </button>
+                    {/* Title */}
+                    <h3
+                      className="text-sm font-semibold group-hover:text-opacity-80 transition-all truncate flex-1 min-w-0"
+                      style={{ color: 'var(--md-on-surface)' }}
+                    >
+                      {incident.title}
+                    </h3>
 
-                            {/* Status dropdown */}
-                            {statusDropdown === incident.id && (
-                              <div
-                                className="absolute z-20 mt-1 rounded-lg shadow-lg overflow-hidden min-w-[130px]"
-                                style={{
-                                  background: 'var(--md-surface-container-high)',
-                                  border: '1px solid var(--md-outline-variant)',
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  onClick={() => handleStatusUpdate(incident.id, 'resolved')}
-                                  className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
-                                  style={{ color: 'var(--md-on-surface)' }}
-                                >
-                                  Mark as Resolved
-                                </button>
-                                <button
-                                  onClick={() => handleStatusUpdate(incident.id, 'cancelled')}
-                                  className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
-                                  style={{ color: 'var(--md-on-surface)' }}
-                                >
-                                  Cancel Incident
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Source badge - moved to top right */}
-                        <span
-                          className="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
+                    {/* Right-justified metadata */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Status with dropdown */}
+                      <div className="relative status-dropdown-container">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleStatusDropdown(incident.id);
+                          }}
+                          disabled={updatingStatus === incident.id}
+                          className="px-1.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-0.5 hover:opacity-80 transition-opacity disabled:opacity-50"
                           style={{
-                            background: 'var(--md-tertiary-container)',
-                            color: 'var(--md-on-tertiary-container)',
+                            background: `${getStatusColor(incident.status)}22`,
+                            color: getStatusColor(incident.status),
                           }}
                         >
-                          {incident.source}
-                        </span>
+                          {updatingStatus === incident.id ? (
+                            <Icon name="sync" size={10} className="animate-spin" decorative />
+                          ) : (
+                            <>
+                              {incident.status.replace('_', ' ')}
+                              <Icon name="expand_more" size={12} decorative />
+                            </>
+                          )}
+                        </button>
+
+                        {/* Status dropdown */}
+                        {statusDropdown === incident.id && (
+                          <div
+                            className="absolute z-20 mt-1 rounded-lg shadow-lg overflow-hidden min-w-[130px] right-0"
+                            style={{
+                              background: 'var(--md-surface-container-high)',
+                              border: '1px solid var(--md-outline-variant)',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => handleStatusUpdate(incident.id, 'resolved')}
+                              className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
+                              style={{ color: 'var(--md-on-surface)' }}
+                            >
+                              Mark as Resolved
+                            </button>
+                            <button
+                              onClick={() => handleStatusUpdate(incident.id, 'cancelled')}
+                              className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
+                              style={{ color: 'var(--md-on-surface)' }}
+                            >
+                              Cancel Incident
+                            </button>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Title */}
-                      <h3
-                        className="text-sm font-semibold group-hover:text-opacity-80 transition-all line-clamp-1"
-                        style={{ color: 'var(--md-on-surface)' }}
+                      {/* Source badge */}
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        style={{
+                          background: 'var(--md-tertiary-container)',
+                          color: 'var(--md-on-tertiary-container)',
+                        }}
                       >
-                        {incident.title}
-                      </h3>
-                    </div>
+                        {incident.source}
+                      </span>
 
-                    {/* External Link Icon */}
-                    <Icon
-                      name="open_in_new"
-                      size={14}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      color="var(--md-on-surface-variant)"
-                      decorative
-                    />
+                      {/* External Link Icon */}
+                      <Icon
+                        name="open_in_new"
+                        size={14}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        color="var(--md-on-surface-variant)"
+                        decorative
+                      />
+                    </div>
                   </div>
                 </div>
               );
@@ -663,75 +654,69 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
               return (
                 <div
                   key={alert.id}
-                  className="group rounded-lg p-2.5 transition-all duration-200 hover:shadow-md cursor-pointer"
+                  className="group rounded-lg p-2 transition-all duration-200 hover:shadow-md cursor-pointer"
                   style={{
                     background: 'var(--md-surface-container-high)',
                     border: '1px solid var(--md-outline-variant)',
                   }}
                   onClick={() => alert.externalUrl && window.open(alert.externalUrl, '_blank')}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-center gap-2">
                     {/* Status Indicator */}
-                    <div className="mt-0.5">
-                      <Icon
-                        name="notifications_active"
-                        size={16}
-                        color={urgency.color}
-                        decorative
-                      />
-                    </div>
+                    <Icon
+                      name="notifications_active"
+                      size={14}
+                      color={urgency.color}
+                      decorative
+                      className="flex-shrink-0"
+                    />
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Header - with source badge on right */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="text-xs font-mono font-semibold"
-                            style={{ color: urgency.color }}
-                          >
-                            {alert.shortId}
-                          </span>
-                          <span
-                            className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
-                            style={{
-                              background: `${getStatusColor(alert.status)}22`,
-                              color: getStatusColor(alert.status),
-                            }}
-                          >
-                            {alert.status}
-                          </span>
-                          <span
-                            className="px-1.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-0.5"
-                            style={{
-                              background: `${urgency.color}22`,
-                              color: urgency.color,
-                            }}
-                          >
-                            <Icon name={urgency.icon} size={10} decorative />
-                            {alert.urgency}
-                          </span>
-                        </div>
+                    {/* ID */}
+                    <span
+                      className="text-xs font-mono font-semibold flex-shrink-0"
+                      style={{ color: urgency.color }}
+                    >
+                      {alert.shortId}
+                    </span>
 
-                        {/* Source badge - moved to top right */}
-                        <span
-                          className="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
-                          style={{
-                            background: 'var(--md-secondary-container)',
-                            color: 'var(--md-on-secondary-container)',
-                          }}
-                        >
-                          {alert.source}
-                        </span>
-                      </div>
+                    {/* Summary */}
+                    <h3
+                      className="text-sm font-semibold group-hover:text-opacity-80 transition-all truncate flex-1 min-w-0"
+                      style={{ color: 'var(--md-on-surface)' }}
+                    >
+                      {alert.summary}
+                    </h3>
 
-                      {/* Summary */}
-                      <h3
-                        className="text-sm font-semibold group-hover:text-opacity-80 transition-all line-clamp-1"
-                        style={{ color: 'var(--md-on-surface)' }}
+                    {/* Right-justified metadata */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span
+                        className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                        style={{
+                          background: `${getStatusColor(alert.status)}22`,
+                          color: getStatusColor(alert.status),
+                        }}
                       >
-                        {alert.summary}
-                      </h3>
+                        {alert.status}
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-0.5"
+                        style={{
+                          background: `${urgency.color}22`,
+                          color: urgency.color,
+                        }}
+                      >
+                        <Icon name={urgency.icon} size={10} decorative />
+                        {alert.urgency}
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        style={{
+                          background: 'var(--md-secondary-container)',
+                          color: 'var(--md-on-secondary-container)',
+                        }}
+                      >
+                        {alert.source}
+                      </span>
                     </div>
 
                     {/* External Link Icon */}

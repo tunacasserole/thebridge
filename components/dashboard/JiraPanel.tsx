@@ -286,128 +286,108 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
 
     return (
       <div
-        className="group rounded-xl p-3 transition-all duration-200 hover:shadow-lg cursor-pointer"
+        className="group rounded-lg p-2.5 transition-all duration-200 hover:shadow-md cursor-pointer"
         style={{
           background: isBug ? 'var(--md-error-container)' : 'var(--md-surface-container-high)',
           border: isBug ? '1px solid var(--md-error)' : '1px solid var(--md-outline-variant)',
         }}
         onClick={() => window.open(task.url, '_blank')}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-2">
           {/* Status Indicator */}
-          <div className="mt-1">
-            {isBug ? (
-              <Icon name="bug_report" size={20} color="var(--md-error)" decorative />
-            ) : (
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ background: getStatusColor(task.statusCategory) }}
-              />
-            )}
-          </div>
+          {isBug ? (
+            <Icon name="bug_report" size={16} color="var(--md-error)" decorative className="flex-shrink-0" />
+          ) : (
+            <div
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ background: getStatusColor(task.statusCategory) }}
+            />
+          )}
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            {/* Header - includes key, status, parent, and assignee */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-                {type === 'task' && (
-                  <Icon name="task" size={16} color="var(--md-tertiary)" decorative />
+          {/* Key */}
+          {type === 'task' && (
+            <Icon name="task" size={14} color="var(--md-tertiary)" decorative className="flex-shrink-0" />
+          )}
+          <span
+            className="text-xs font-mono font-semibold flex-shrink-0"
+            style={{ color: isBug ? 'var(--md-error)' : type === 'task' ? 'var(--md-tertiary)' : 'var(--md-primary)' }}
+          >
+            {task.key}
+          </span>
+
+          {/* Title */}
+          <h3
+            className="text-sm font-semibold group-hover:text-opacity-80 transition-all truncate flex-1 min-w-0"
+            style={{ color: isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface)' }}
+          >
+            {task.title}
+          </h3>
+
+          {/* Right-justified metadata */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Status with dropdown */}
+            <div className="relative status-dropdown-container">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleStatusDropdown(task.key);
+                }}
+                disabled={updatingStatus === task.key}
+                className="px-1.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-0.5 hover:opacity-80 transition-opacity disabled:opacity-50"
+                style={{
+                  background: `${getStatusColor(task.statusCategory)}22`,
+                  color: getStatusColor(task.statusCategory),
+                }}
+              >
+                {updatingStatus === task.key ? (
+                  <Icon name="sync" size={10} className="animate-spin" decorative />
+                ) : (
+                  <>
+                    {task.status}
+                    <Icon name="expand_more" size={12} decorative />
+                  </>
                 )}
-                <span
-                  className="text-xs font-mono font-semibold"
-                  style={{ color: isBug ? 'var(--md-error)' : type === 'task' ? 'var(--md-tertiary)' : 'var(--md-primary)' }}
+              </button>
+
+              {/* Transitions dropdown */}
+              {statusDropdown === task.key && transitions[task.key] && (
+                <div
+                  className="absolute z-20 mt-1 rounded-lg shadow-lg overflow-hidden min-w-[130px] right-0"
+                  style={{
+                    background: 'var(--md-surface-container-high)',
+                    border: '1px solid var(--md-outline-variant)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {task.key}
-                </span>
-
-                {/* Status with dropdown */}
-                <div className="relative status-dropdown-container">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleStatusDropdown(task.key);
-                    }}
-                    disabled={updatingStatus === task.key}
-                    className="px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 hover:opacity-80 transition-opacity disabled:opacity-50"
-                    style={{
-                      background: `${getStatusColor(task.statusCategory)}22`,
-                      color: getStatusColor(task.statusCategory),
-                    }}
-                  >
-                    {updatingStatus === task.key ? (
-                      <>
-                        <Icon name="sync" size={12} className="animate-spin" decorative />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        {task.status}
-                        <Icon name="expand_more" size={14} decorative />
-                      </>
-                    )}
-                  </button>
-
-                  {/* Transitions dropdown */}
-                  {statusDropdown === task.key && transitions[task.key] && (
-                    <div
-                      className="absolute z-20 mt-1 rounded-lg shadow-lg overflow-hidden min-w-[150px]"
-                      style={{
-                        background: 'var(--md-surface-container-high)',
-                        border: '1px solid var(--md-outline-variant)',
-                      }}
-                      onClick={(e) => e.stopPropagation()}
+                  {transitions[task.key].map((transition) => (
+                    <button
+                      key={transition.id}
+                      onClick={() => handleStatusUpdate(task.key, transition.id)}
+                      className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
+                      style={{ color: 'var(--md-on-surface)' }}
                     >
-                      {transitions[task.key].map((transition) => (
-                        <button
-                          key={transition.id}
-                          onClick={() => handleStatusUpdate(task.key, transition.id)}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
-                          style={{ color: 'var(--md-on-surface)' }}
-                        >
-                          {transition.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {task.parentKey && (
-                  <span className="text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    → {task.parentKey}
-                  </span>
-                )}
-              </div>
-
-              {/* Assignee - right justified */}
-              {task.assignee && (
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-xs" style={{ color: isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface-variant)' }}>
-                    {task.assignee.name}
-                  </span>
-                  <img
-                    src={task.assignee.avatar}
-                    alt={task.assignee.name}
-                    className="w-5 h-5 rounded-full"
-                  />
+                      {transition.name}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Title */}
-            <h3
-              className="text-sm font-semibold group-hover:text-opacity-80 transition-all"
-              style={{ color: isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface)' }}
-            >
-              {task.title}
-            </h3>
-          </div>
+            {/* Assignee */}
+            {task.assignee && (
+              <img
+                src={task.assignee.avatar}
+                alt={task.assignee.name}
+                className="w-5 h-5 rounded-full"
+                title={task.assignee.name}
+              />
+            )}
 
-          {/* External link indicator */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* External link indicator */}
             <Icon
               name="open_in_new"
-              size={18}
+              size={14}
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
               color={isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface-variant)'}
               decorative
             />
@@ -678,7 +658,7 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
 
       {/* Task Cards */}
       <div
-        className="space-y-3 overflow-y-auto pr-1 flex-1 min-h-0"
+        className="space-y-1.5 overflow-y-auto pr-1 flex-1 min-h-0"
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: 'var(--md-primary) var(--md-surface-container-high)',
