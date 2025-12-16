@@ -200,8 +200,8 @@ export async function fetchMergedPRsMultiRepo(
           stars: repoInfo.stargazers_count,
           openIssues: repoInfo.open_issues_count,
           forks: repoInfo.forks_count,
-          defaultBranch: (repoInfo as any).default_branch || 'main',
-          language: (repoInfo as any).language || null,
+          defaultBranch: (repoInfo as GitHubRepository & { default_branch?: string }).default_branch || 'main',
+          language: (repoInfo as GitHubRepository & { language?: string }).language || null,
           updatedAt: repoInfo.updated_at,
         });
 
@@ -324,3 +324,341 @@ export async function fetchOpenPRsMultiRepo(
 }
 
 export { type GitHubData, type Commit, type PullRequest, type MergedPR, type GitHubMultiRepoDashboardData, type RepoInfo, type OpenPR, type GitHubOpenPRsDashboardData } from './types';
+
+// ===== Code Writing Operations =====
+
+interface GitHubFileContent {
+  type: string;
+  encoding: string;
+  size: number;
+  name: string;
+  path: string;
+  content: string;
+  sha: string;
+  url: string;
+  git_url: string;
+  html_url: string;
+  download_url: string;
+}
+
+interface GitHubTreeItem {
+  path: string;
+  mode: string;
+  type: string;
+  sha?: string;
+  size?: number;
+  url?: string;
+}
+
+interface GitHubBranch {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  protected: boolean;
+}
+
+/**
+ * Get file content from a repository
+ */
+export async function getFileContent(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string
+): Promise<{ content: string; sha: string; encoding: string }> {
+  const endpoint = ref
+    ? `/repos/${owner}/${repo}/contents/${path}?ref=${ref}`
+    : `/repos/${owner}/${repo}/contents/${path}`;
+
+  const file = await githubFetch<GitHubFileContent>(endpoint, token);
+
+  if (file.type !== 'file') {
+    throw new Error(`Path ${path} is not a file, it's a ${file.type}`);
+  }
+
+  // Decode base64 content
+  const content = Buffer.from(file.content, 'base64').toString('utf-8');
+
+  return {
+    content,
+    sha: file.sha,
+    encoding: file.encoding,
+  };
+}
+
+/**
+ * List directory contents
+ */
+export async function listDirectory(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string = '',
+  ref?: string
+): Promise<Array<{ name: string; path: string; type: 'file' | 'dir'; size?: number }>> {
+  const endpoint = ref
+    ? `/repos/${owner}/${repo}/contents/${path}?ref=${ref}`
+    : `/repos/${owner}/${repo}/contents/${path}`;
+
+  const contents = await githubFetch<GitHubFileContent[]>(endpoint, token);
+
+  return contents.map(item => ({
+    name: item.name,
+    path: item.path,
+    type: item.type as 'file' | 'dir',
+    size: item.size,
+  }));
+}
+
+/**
+ * Create or update a file in the repository
+ */
+export async function createOrUpdateFile(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  content: string,
+  message: string,
+  branch?: string,
+  existingSha?: string
+): Promise<{ commit: { sha: string; html_url: string }; content: { sha: string } }> {
+  // First, try to get existing file SHA if not provided
+  let sha = existingSha;
+  if (!sha) {
+    try {
+      const existing = await getFileContent(token, owner, repo, path, branch);
+      sha = existing.sha;
+    } catch {
+      // File doesn't exist, which is fine for creation
+    }
+  }
+
+  const body: Record<string, unknown> = {
+    message,
+    content: Buffer.from(content).toString('base64'),
+  };
+
+  if (branch) {
+    body.branch = branch;
+  }
+
+  if (sha) {
+    body.sha = sha;
+  }
+
+  const response = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repo}/contents/${path}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a file from the repository
+ */
+export async function deleteFile(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  message: string,
+  branch?: string
+): Promise<{ commit: { sha: string; html_url: string } }> {
+  // Get existing file SHA (required for deletion)
+  const existing = await getFileContent(token, owner, repo, path, branch);
+
+  const body: Record<string, unknown> = {
+    message,
+    sha: existing.sha,
+  };
+
+  if (branch) {
+    body.branch = branch;
+  }
+
+  const response = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repo}/contents/${path}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Create a new branch from an existing ref
+ */
+export async function createBranch(
+  token: string,
+  owner: string,
+  repo: string,
+  branchName: string,
+  fromRef: string = 'main'
+): Promise<{ ref: string; url: string }> {
+  // Get the SHA of the source ref
+  const sourceRef = await githubFetch<{ object: { sha: string } }>(
+    `/repos/${owner}/${repo}/git/ref/heads/${fromRef}`,
+    token
+  );
+
+  const response = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repo}/git/refs`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ref: `refs/heads/${branchName}`,
+      sha: sourceRef.object.sha,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * List branches in a repository
+ */
+export async function listBranches(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<Array<{ name: string; sha: string; protected: boolean }>> {
+  const branches = await githubFetch<GitHubBranch[]>(
+    `/repos/${owner}/${repo}/branches?per_page=100`,
+    token
+  );
+
+  return branches.map(b => ({
+    name: b.name,
+    sha: b.commit.sha,
+    protected: b.protected,
+  }));
+}
+
+/**
+ * Search for files in a repository
+ */
+export async function searchCode(
+  token: string,
+  owner: string,
+  repo: string,
+  query: string
+): Promise<Array<{ path: string; sha: string; score: number; html_url: string }>> {
+  const searchQuery = encodeURIComponent(`${query} repo:${owner}/${repo}`);
+
+  const response = await fetch(`${GITHUB_API_URL}/search/code?q=${searchQuery}&per_page=30`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  return result.items.map((item: { path: string; sha: string; score: number; html_url: string }) => ({
+    path: item.path,
+    sha: item.sha,
+    score: item.score,
+    html_url: item.html_url,
+  }));
+}
+
+/**
+ * Get repository tree (all files)
+ */
+export async function getRepoTree(
+  token: string,
+  owner: string,
+  repo: string,
+  ref: string = 'main',
+  recursive: boolean = true
+): Promise<Array<{ path: string; type: 'blob' | 'tree'; sha: string; size?: number }>> {
+  const endpoint = `/repos/${owner}/${repo}/git/trees/${ref}${recursive ? '?recursive=1' : ''}`;
+
+  const response = await githubFetch<{ tree: GitHubTreeItem[]; truncated: boolean }>(endpoint, token);
+
+  return response.tree.map(item => ({
+    path: item.path,
+    type: item.type as 'blob' | 'tree',
+    sha: item.sha || '',
+    size: item.size,
+  }));
+}
+
+/**
+ * Create a pull request
+ */
+export async function createPullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  title: string,
+  head: string,
+  base: string,
+  body?: string,
+  draft: boolean = false
+): Promise<{ number: number; html_url: string; id: number }> {
+  const response = await fetch(`${GITHUB_API_URL}/repos/${owner}/${repo}/pulls`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title,
+      head,
+      base,
+      body: body || '',
+      draft,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}

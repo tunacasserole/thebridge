@@ -5,7 +5,19 @@
  */
 
 import { fetchRootlyDashboardData, updateIncidentStatus, postIncidentComment } from '@/lib/rootly/client';
-import { fetchGitHubData, fetchOpenPRsMultiRepo, fetchMergedPRsMultiRepo } from '@/lib/github/client';
+import {
+  fetchOpenPRsMultiRepo,
+  fetchMergedPRsMultiRepo,
+  getFileContent,
+  createOrUpdateFile,
+  deleteFile,
+  listDirectory,
+  createBranch,
+  listBranches,
+  searchCode,
+  getRepoTree,
+  createPullRequest,
+} from '@/lib/github/client';
 import { searchJiraIssues, addJiraComment, createJiraStory, safeJiraFetch } from '@/lib/jira/client';
 import {
   listDatabases,
@@ -129,6 +141,211 @@ export async function executeTool(
             },
           };
         }
+      }
+
+      // ===== GITHUB CODE TOOLS =====
+      case 'github_read_file': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const path = input.path as string;
+        const branch = input.branch as string | undefined;
+
+        const result = await getFileContent(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo, path, branch);
+        return {
+          success: true,
+          data: {
+            path,
+            content: result.content,
+            sha: result.sha,
+            encoding: result.encoding,
+          },
+        };
+      }
+
+      case 'github_write_file': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const path = input.path as string;
+        const content = input.content as string;
+        const message = input.message as string;
+        const branch = input.branch as string | undefined;
+
+        const result = await createOrUpdateFile(
+          env.GITHUB_TOKEN,
+          env.GITHUB_OWNER,
+          repo,
+          path,
+          content,
+          message,
+          branch
+        );
+        return {
+          success: true,
+          data: {
+            message: `File ${path} has been created/updated`,
+            commit: {
+              sha: result.commit.sha,
+              url: result.commit.html_url,
+            },
+            file: {
+              sha: result.content.sha,
+            },
+          },
+        };
+      }
+
+      case 'github_delete_file': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const path = input.path as string;
+        const message = input.message as string;
+        const branch = input.branch as string | undefined;
+
+        const result = await deleteFile(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo, path, message, branch);
+        return {
+          success: true,
+          data: {
+            message: `File ${path} has been deleted`,
+            commit: {
+              sha: result.commit.sha,
+              url: result.commit.html_url,
+            },
+          },
+        };
+      }
+
+      case 'github_list_directory': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const path = (input.path as string) || '';
+        const branch = input.branch as string | undefined;
+
+        const contents = await listDirectory(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo, path, branch);
+        return {
+          success: true,
+          data: {
+            path: path || '/',
+            contents,
+            count: {
+              files: contents.filter(c => c.type === 'file').length,
+              directories: contents.filter(c => c.type === 'dir').length,
+            },
+          },
+        };
+      }
+
+      case 'github_create_branch': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const branchName = input.branch_name as string;
+        const fromBranch = (input.from_branch as string) || 'main';
+
+        const result = await createBranch(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo, branchName, fromBranch);
+        return {
+          success: true,
+          data: {
+            message: `Branch '${branchName}' created from '${fromBranch}'`,
+            ref: result.ref,
+            url: result.url,
+          },
+        };
+      }
+
+      case 'github_list_branches': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+
+        const branches = await listBranches(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo);
+        return {
+          success: true,
+          data: {
+            branches,
+            count: branches.length,
+          },
+        };
+      }
+
+      case 'github_search_code': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const query = input.query as string;
+
+        const results = await searchCode(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo, query);
+        return {
+          success: true,
+          data: {
+            query,
+            results,
+            count: results.length,
+          },
+        };
+      }
+
+      case 'github_get_tree': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const branch = (input.branch as string) || 'main';
+
+        const tree = await getRepoTree(env.GITHUB_TOKEN, env.GITHUB_OWNER, repo, branch);
+        return {
+          success: true,
+          data: {
+            branch,
+            tree: tree.filter(item => item.type === 'blob'), // Only return files, not directories
+            count: {
+              files: tree.filter(item => item.type === 'blob').length,
+              directories: tree.filter(item => item.type === 'tree').length,
+            },
+          },
+        };
+      }
+
+      case 'github_create_pr': {
+        if (!env.GITHUB_TOKEN) {
+          return { success: false, error: 'GitHub is not configured. Set GITHUB_TOKEN.' };
+        }
+        const repo = input.repository as string;
+        const title = input.title as string;
+        const head = input.head as string;
+        const base = input.base as string;
+        const body = input.body as string | undefined;
+        const draft = (input.draft as boolean) || false;
+
+        const result = await createPullRequest(
+          env.GITHUB_TOKEN,
+          env.GITHUB_OWNER,
+          repo,
+          title,
+          head,
+          base,
+          body,
+          draft
+        );
+        return {
+          success: true,
+          data: {
+            message: `Pull request #${result.number} created`,
+            number: result.number,
+            url: result.html_url,
+            id: result.id,
+          },
+        };
       }
 
       // ===== JIRA TOOLS =====
