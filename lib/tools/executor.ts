@@ -28,14 +28,15 @@ import {
 } from '@/lib/integrations/metabase';
 
 // Environment variables
+// Use consistent env var names with the rest of the codebase (JIRA_* not ATLASSIAN_*)
 const getEnv = () => ({
   ROOTLY_API_KEY: process.env.ROOTLY_API_KEY || '',
   GITHUB_TOKEN: process.env.GITHUB_TOKEN || '',
   GITHUB_OWNER: process.env.GITHUB_OWNER || '',
   GITHUB_REPOS: (process.env.GITHUB_REPOS || '').split(',').filter(Boolean),
-  JIRA_BASE_URL: process.env.ATLASSIAN_DOMAIN ? `https://${process.env.ATLASSIAN_DOMAIN}` : '',
-  JIRA_EMAIL: process.env.ATLASSIAN_EMAIL || '',
-  JIRA_API_TOKEN: process.env.ATLASSIAN_API_TOKEN || '',
+  JIRA_BASE_URL: process.env.JIRA_BASE_URL || '',
+  JIRA_EMAIL: process.env.JIRA_EMAIL || '',
+  JIRA_API_TOKEN: process.env.JIRA_API_TOKEN || '',
   NEW_RELIC_API_KEY: process.env.NEW_RELIC_API_KEY || '',
   NEW_RELIC_ACCOUNT_ID: process.env.NEW_RELIC_ACCOUNT_ID || '',
 });
@@ -351,7 +352,7 @@ export async function executeTool(
       // ===== JIRA TOOLS =====
       case 'jira_search_issues': {
         if (!env.JIRA_BASE_URL || !env.JIRA_EMAIL || !env.JIRA_API_TOKEN) {
-          return { success: false, error: 'Jira is not configured. Set ATLASSIAN_DOMAIN, ATLASSIAN_EMAIL, and ATLASSIAN_API_TOKEN.' };
+          return { success: false, error: 'Jira is not configured. Set JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN.' };
         }
         const filters = {
           assignee: input.assignee as string | undefined,
