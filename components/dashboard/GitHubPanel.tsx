@@ -362,36 +362,31 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
                   <Icon name="commit" size={16} decorative />
                   Recent Commits
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {data.commits.map((commit: Commit) => (
                     <a
                       key={commit.sha}
                       href={commit.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-start gap-3 p-3 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors"
+                      className="flex items-center gap-2 p-2 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors"
                     >
                       {commit.authorAvatar ? (
-                        <img src={commit.authorAvatar} alt={commit.author} className="w-8 h-8 rounded-full" />
+                        <img src={commit.authorAvatar} alt={commit.author} className="w-6 h-6 rounded-full flex-shrink-0" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-bridge-bg-tertiary flex items-center justify-center text-xs">
+                        <div className="w-6 h-6 rounded-full bg-bridge-bg-tertiary flex items-center justify-center text-xs flex-shrink-0">
                           {commit.author[0]}
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-bridge-text-primary">
-                          {commit.messageShort}
-                        </div>
-                        <div className="text-xs text-bridge-text-muted mt-1 flex items-center gap-2">
-                          <span>{commit.author}</span>
-                          <span>•</span>
-                          <span className="font-mono">{commit.shortSha}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Icon name="schedule" size={12} decorative />
-                            {commit.duration}
-                          </span>
-                        </div>
+                      <span className="text-sm font-medium text-bridge-text-primary truncate flex-1 min-w-0">
+                        {commit.messageShort}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-bridge-text-muted flex-shrink-0">
+                        <span className="font-mono">{commit.shortSha}</span>
+                        <span className="flex items-center gap-1">
+                          <Icon name="schedule" size={10} decorative />
+                          {commit.duration}
+                        </span>
                       </div>
                     </a>
                   ))}
@@ -412,41 +407,35 @@ export default function GitHubPanel({ compact = false, defaultExpanded = false, 
                   <Icon name="merge" size={16} decorative />
                   Pull Requests
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {data.pullRequests.map((pr: PullRequest) => (
                     <a
                       key={pr.id}
                       href={pr.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-start gap-3 p-3 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors"
+                      className="flex items-center gap-2 p-2 rounded-lg bg-bridge-bg-card hover:bg-bridge-bg-tertiary transition-colors"
                     >
-                      <div style={{ color: getPRStateColor(pr.state) }}>
+                      <div style={{ color: getPRStateColor(pr.state) }} className="flex-shrink-0">
                         {getPRStateIcon(pr.state)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-bridge-text-primary flex items-center gap-2">
-                          <span className="truncate">{pr.title}</span>
-                          {pr.draft && (
-                            <span className="text-xs px-2 py-0.5 rounded" style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}>
-                              Draft
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-bridge-text-muted mt-1 flex items-center gap-2">
-                          <span>#{pr.number}</span>
-                          <span>•</span>
-                          <span>{pr.author}</span>
-                          <span>•</span>
-                          <span style={{ color: getPRStateColor(pr.state) }}>
-                            {pr.state}
+                      <span className="text-sm font-medium text-bridge-text-primary truncate flex-1 min-w-0">
+                        {pr.title}
+                      </span>
+                      <div className="flex items-center gap-2 text-xs text-bridge-text-muted flex-shrink-0">
+                        {pr.draft && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}>
+                            Draft
                           </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Icon name="schedule" size={12} decorative />
-                            {pr.duration}
-                          </span>
-                        </div>
+                        )}
+                        <span>#{pr.number}</span>
+                        <span style={{ color: getPRStateColor(pr.state) }}>
+                          {pr.state}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Icon name="schedule" size={10} decorative />
+                          {pr.duration}
+                        </span>
                       </div>
                     </a>
                   ))}

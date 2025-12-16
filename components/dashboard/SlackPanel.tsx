@@ -276,7 +276,7 @@ export default function SlackPanel({ compact = false, refreshTrigger, defaultExp
                   <p className="text-sm text-bridge-accent-red">{messagesError}</p>
                 </div>
               ) : messages.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {messages.map((message) => {
                     const timestamp = new Date(parseFloat(message.ts) * 1000);
                     const timeStr = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -284,46 +284,46 @@ export default function SlackPanel({ compact = false, refreshTrigger, defaultExp
                     return (
                       <div
                         key={message.ts}
-                        className="p-3 rounded-xl"
+                        className="p-2.5 rounded-lg"
                         style={{
                           background: 'var(--md-surface-container-high)',
                           border: '1px solid var(--md-outline-variant)',
                         }}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2">
                           {/* User Avatar */}
                           {message.userInfo?.profile?.image_48 ? (
                             <img
                               src={message.userInfo.profile.image_48}
                               alt={message.userInfo.real_name || message.userInfo.name}
-                              className="w-8 h-8 rounded-lg flex-shrink-0"
+                              className="w-6 h-6 rounded flex-shrink-0"
                             />
                           ) : (
                             <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                              className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
                               style={{ background: colors.primary }}
                             >
-                              <Icon name="person" size={16} color="white" decorative />
+                              <Icon name="person" size={14} color="white" decorative />
                             </div>
                           )}
 
                           {/* Message Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline gap-2 mb-1">
+                            <div className="flex items-center gap-2">
                               <span className="font-semibold text-sm text-bridge-text-primary">
                                 {message.userInfo?.profile?.display_name || message.userInfo?.real_name || message.userInfo?.name || 'Unknown'}
                               </span>
                               <span className="text-xs text-bridge-text-muted">{timeStr}</span>
+                              {message.thread_ts && message.reply_count && (
+                                <span className="text-xs text-bridge-accent-blue flex items-center gap-1 ml-auto">
+                                  <Icon name="forum" size={12} decorative />
+                                  {message.reply_count}
+                                </span>
+                              )}
                             </div>
-                            <p className="text-sm text-bridge-text-secondary whitespace-pre-wrap break-words">
+                            <p className="text-sm text-bridge-text-secondary whitespace-pre-wrap break-words line-clamp-2">
                               {message.text}
                             </p>
-                            {message.thread_ts && message.reply_count && (
-                              <div className="mt-2 flex items-center gap-1 text-xs text-bridge-accent-blue">
-                                <Icon name="forum" size={14} decorative />
-                                <span>{message.reply_count} {message.reply_count === 1 ? 'reply' : 'replies'}</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -345,50 +345,42 @@ export default function SlackPanel({ compact = false, refreshTrigger, defaultExp
                   <Icon name="tag" size={16} style={{ color: colors.primary }} decorative />
                   Top Channels
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {data.recentChannels.map((channel) => (
                     <button
                       key={channel.id}
                       onClick={() => setSelectedChannel(channel)}
-                      className="w-full p-3 rounded-xl transition-all duration-200 hover:shadow-md cursor-pointer text-left"
+                      className="w-full p-2 rounded-lg transition-all duration-200 hover:shadow-md cursor-pointer text-left"
                       style={{
                         background: 'var(--md-surface-container-high)',
                         border: '1px solid var(--md-outline-variant)',
                       }}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Icon
-                              name={channel.is_private ? 'lock' : 'tag'}
-                              size={14}
-                              style={{ color: channel.is_private ? colors.warning : colors.primary }}
-                              decorative
-                            />
-                            <span className="font-semibold text-sm text-bridge-text-primary">
-                              #{channel.name}
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          name={channel.is_private ? 'lock' : 'tag'}
+                          size={14}
+                          style={{ color: channel.is_private ? colors.warning : colors.primary }}
+                          decorative
+                          className="flex-shrink-0"
+                        />
+                        <span className="font-semibold text-sm text-bridge-text-primary truncate flex-1 min-w-0">
+                          #{channel.name}
+                        </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {channel.is_private && (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ background: `${colors.warning}22`, color: colors.warning }}
+                            >
+                              Private
                             </span>
-                            {channel.is_private && (
-                              <span
-                                className="text-xs px-2 py-0.5 rounded-full"
-                                style={{ background: `${colors.warning}22`, color: colors.warning }}
-                              >
-                                Private
-                              </span>
-                            )}
-                          </div>
-                          {channel.topic?.value && (
-                            <p className="text-xs text-bridge-text-muted truncate">
-                              {channel.topic.value}
-                            </p>
                           )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-xs text-bridge-text-muted flex-shrink-0">
-                            <Icon name="people" size={14} decorative />
+                          <div className="flex items-center gap-1 text-xs text-bridge-text-muted">
+                            <Icon name="people" size={12} decorative />
                             <span>{channel.num_members || 0}</span>
                           </div>
-                          <Icon name="chevron_right" size={16} className="text-bridge-text-muted" decorative />
+                          <Icon name="chevron_right" size={14} className="text-bridge-text-muted" decorative />
                         </div>
                       </div>
                     </button>

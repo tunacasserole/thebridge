@@ -362,7 +362,7 @@ export default function GitHubPRPanel({
                     href={pr.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-3 p-4 rounded-xl transition-all duration-200 hover:shadow-lg cursor-pointer block"
+                    className="group flex items-center gap-2 p-2.5 rounded-lg transition-all duration-200 hover:shadow-md cursor-pointer block"
                     style={{
                       background: 'var(--md-surface-container-high)',
                       border: '1px solid var(--md-outline-variant)',
@@ -372,63 +372,45 @@ export default function GitHubPRPanel({
                     <img
                       src={pr.authorAvatar}
                       alt={pr.author}
-                      className="w-10 h-10 rounded-full flex-shrink-0"
+                      className="w-7 h-7 rounded-full flex-shrink-0"
                     />
 
-                    {/* PR Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Title */}
-                      <div className="flex items-start gap-2 mb-2">
-                        <Icon
-                          name={prState === 'merged' ? 'check_circle' : 'merge'}
-                          size={16}
-                          style={{ color: prState === 'merged' ? colors.emerald : colors.success }}
-                          decorative
-                        />
-                        <h4 className="text-base font-semibold group-hover:text-opacity-80 transition-all flex-1" style={{ color: 'var(--md-on-surface)' }}>
-                          {pr.title}
-                          {isDraft && (
-                            <span
-                              className="ml-2 text-xs px-2 py-0.5 rounded-full font-medium"
-                              style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}
-                            >
-                              Draft
-                            </span>
-                          )}
-                        </h4>
-                      </div>
+                    {/* PR State Icon */}
+                    <Icon
+                      name={prState === 'merged' ? 'check_circle' : 'merge'}
+                      size={14}
+                      style={{ color: prState === 'merged' ? colors.emerald : colors.success }}
+                      decorative
+                      className="flex-shrink-0"
+                    />
 
-                      {/* Metadata */}
-                      <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
-                        <span className="font-mono">#{pr.number}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Icon name="folder" size={12} decorative />
-                          {pr.repository}
+                    {/* PR Title */}
+                    <h4 className="text-sm font-semibold group-hover:text-opacity-80 transition-all truncate flex-1 min-w-0" style={{ color: 'var(--md-on-surface)' }}>
+                      {pr.title}
+                    </h4>
+
+                    {/* Right-justified metadata */}
+                    <div className="flex items-center gap-2 text-xs flex-shrink-0" style={{ color: 'var(--md-on-surface-variant)' }}>
+                      {isDraft && (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                          style={{ background: `${colors.outlineVariant}22`, color: colors.outlineVariant }}
+                        >
+                          Draft
                         </span>
-                        <span>•</span>
-                        <span>{pr.author}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Icon name="schedule" size={12} decorative />
-                          {timeAgo}
-                        </span>
-                        {!isOpenPR && 'branch' in pr && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Icon name="source" size={12} decorative />
-                              {(pr as MergedPR).branch}
-                            </span>
-                          </>
-                        )}
-                      </div>
+                      )}
+                      <span className="font-mono">#{pr.number}</span>
+                      <span className="hidden sm:inline">{pr.repository}</span>
+                      <span className="flex items-center gap-1">
+                        <Icon name="schedule" size={10} decorative />
+                        {timeAgo}
+                      </span>
                     </div>
 
                     {/* External Link Icon */}
                     <Icon
                       name="open_in_new"
-                      size={18}
+                      size={14}
                       className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       color="var(--md-on-surface-variant)"
                       decorative

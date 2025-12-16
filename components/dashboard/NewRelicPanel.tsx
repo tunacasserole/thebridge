@@ -327,57 +327,54 @@ export default function NewRelicPanel({
               {data.applications.map((app) => (
                 <div
                   key={app.id}
-                  className="p-3 rounded-xl transition-all duration-200 hover:shadow-md"
+                  className="p-2.5 rounded-lg transition-all duration-200 hover:shadow-md"
                   style={{
                     background: 'var(--md-surface-container-high)',
                     border: '1px solid var(--md-outline-variant)',
                   }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {/* Health Indicator */}
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ background: `${getHealthColor(app.health_status)}22` }}
                     >
                       <Icon
                         name={getHealthIcon(app.health_status)}
-                        size={18}
+                        size={14}
                         color={getHealthColor(app.health_status)}
                         decorative
                       />
                     </div>
 
-                    {/* App Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h5
-                          className="font-semibold truncate"
-                          style={{ color: 'var(--md-on-surface)' }}
-                        >
-                          {app.name}
-                        </h5>
-                        <span
-                          className="px-2 py-0.5 rounded-full text-xs font-medium"
-                          style={{
-                            background: `${getHealthColor(app.health_status)}22`,
-                            color: getHealthColor(app.health_status),
-                          }}
-                        >
-                          {app.health_status}
-                        </span>
-                      </div>
-                      <div
-                        className="text-xs flex items-center gap-2"
+                    {/* App Name */}
+                    <h5
+                      className="font-semibold text-sm truncate flex-1 min-w-0"
+                      style={{ color: 'var(--md-on-surface)' }}
+                    >
+                      {app.name}
+                    </h5>
+
+                    {/* Right-justified metadata */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span
+                        className="text-xs"
                         style={{ color: 'var(--md-on-surface-variant)' }}
                       >
-                        <span>{app.language}</span>
-                        {!app.reporting && (
-                          <>
-                            <span>•</span>
-                            <span className="text-yellow-500">Not reporting</span>
-                          </>
-                        )}
-                      </div>
+                        {app.language}
+                      </span>
+                      {!app.reporting && (
+                        <span className="text-xs text-yellow-500">Not reporting</span>
+                      )}
+                      <span
+                        className="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                        style={{
+                          background: `${getHealthColor(app.health_status)}22`,
+                          color: getHealthColor(app.health_status),
+                        }}
+                      >
+                        {app.health_status}
+                      </span>
                     </div>
                   </div>
                 </div>
