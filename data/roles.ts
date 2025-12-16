@@ -24,15 +24,6 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     color: '#10b981', // Green
     shortName: 'SRE',
   },
-  commander: {
-    id: 'commander',
-    name: 'Incident Commander',
-    description:
-      'Lead incident response, coordinate teams, and manage critical situations',
-    icon: 'Campaign', // Material UI icon (megaphone/command)
-    color: '#ef4444', // Red
-    shortName: 'IC',
-  },
   pm: {
     id: 'pm',
     name: 'Product Manager',
@@ -57,16 +48,6 @@ export const ROLE_TERMINOLOGY: Record<UserRole, TerminologyMap> = {
     healthLabel: 'Health',
     knowledgeBaseLabel: 'SRE Wisdom',
     playbookLabel: 'Runbooks',
-  },
-  commander: {
-    homeLabel: 'Command Center',
-    homeSublabel: 'Incident response and coordination',
-    agentFloorLabel: 'Agent Command',
-    agentDeployAction: 'Dispatch Agent',
-    systemsLabel: 'Services',
-    healthLabel: 'Status',
-    knowledgeBaseLabel: 'Incident Playbooks',
-    playbookLabel: 'Response Plans',
   },
   pm: {
     homeLabel: 'Product Hub',
@@ -125,46 +106,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     ],
     playbookTypes: ['runbooks', 'troubleshooting', 'escalation'],
     terminology: ROLE_TERMINOLOGY.sre,
-  },
-
-  commander: {
-    role: 'commander',
-    showHomeDashboard: false, // Commander goes straight to agent floor
-    showAgentFloor: true,
-    showBuilderWorkspace: false,
-    visibleIntegrations: [
-      'rootly',
-      'newrelic',
-      'uptimekuma',
-      'coralogix',
-      'slack',
-      'confluence',
-    ],
-    defaultAgents: [
-      'rootly-incident-investigator',
-      'rootly-timeline-builder',
-      'nr-impact-analyzer',
-      'log-correlator',
-      'team-notifier',
-      'status-updater',
-      'confluence-postmortem',
-    ],
-    recommendedAgents: [
-      'escalation-coordinator',
-      'vendor-liaison',
-      'customer-impact-assessor',
-      'rollback-advisor',
-      'communication-coordinator',
-    ],
-    knowledgeBaseCategories: [
-      'incident-response',
-      'communication',
-      'escalation',
-      'leadership',
-      'postmortems',
-    ],
-    playbookTypes: ['incident-response', 'communication', 'escalation'],
-    terminology: ROLE_TERMINOLOGY.commander,
   },
 
   pm: {
