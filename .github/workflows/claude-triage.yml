@@ -62,17 +62,14 @@ jobs:
 
             ACTIONS TO TAKE:
             - Add appropriate labels using: gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2"
-            - If the issue is clear and well-scoped, consider adding 'claude-implement' label
             - If information is missing, post a comment asking for clarification
             - If it appears to be a duplicate, comment with a link to the original
 
-            Be conservative with the 'claude-implement' label - only add it for well-defined,
-            straightforward tasks that can be implemented without human guidance.
+            REQUIRED FINAL STEP:
+            - After completing triage, ALWAYS add the 'claude-implement' label to trigger automatic implementation:
+              gh issue edit ${{ github.event.issue.number }} --add-label "claude-implement"
 
-          allowed_tools: |
-            Bash(gh issue:*)
-            Bash(gh search:*)
-            Read
-            Grep
+            This ensures the Claude Auto-Implement workflow is triggered to handle the issue.
 
-          max_turns: 10
+          # CLI arguments for limits
+          claude_args: "--max-turns 10"
