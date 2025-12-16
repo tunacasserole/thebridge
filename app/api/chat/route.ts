@@ -439,26 +439,6 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
                     role: 'user',
                     content: message,
                   },
-
-          // Track token usage for analytics
-          if (user?.id && totalInputTokens > 0) {
-            try {
-              await trackTokenUsage({
-                userId: user.id,
-                model: modelId,
-                usage: {
-                  input_tokens: totalInputTokens,
-                  output_tokens: totalOutputTokens,
-                },
-                conversationId,
-                agentSlug: undefined, // Could be added if we track agent selection
-                toolsUsed: toolCallsHistory.map(t => t.name),
-              });
-            } catch (trackingError) {
-              console.error('[Chat] Failed to track token usage:', trackingError);
-              // Don't fail the request if tracking fails
-            }
-          }
                 });
 
                 // Save assistant response
@@ -485,6 +465,26 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
             } catch (dbError) {
               console.error('[Chat] Failed to save messages:', dbError);
               // Don't fail the request if DB save fails
+            }
+          }
+
+          // Track token usage for analytics
+          if (user?.id && totalInputTokens > 0) {
+            try {
+              await trackTokenUsage({
+                userId: user.id,
+                model: modelId,
+                usage: {
+                  input_tokens: totalInputTokens,
+                  output_tokens: totalOutputTokens,
+                },
+                conversationId,
+                agentSlug: undefined,
+                toolsUsed: toolCallsHistory.map(t => t.name),
+              });
+            } catch (trackingError) {
+              console.error('[Chat] Failed to track token usage:', trackingError);
+              // Don't fail the request if tracking fails
             }
           }
 
