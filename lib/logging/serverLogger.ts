@@ -6,6 +6,25 @@
  * - MCP tool executions
  * - Request/response details
  * - Performance metrics
+ *
+ * Environment Variables:
+ * - LOG_COMPACT: Set to 'false' for detailed multi-line output (default: true for one-line summaries)
+ * - LOG_VERBOSE: Set to 'true' for full request/response payloads (default: false)
+ *
+ * Example output (compact mode - default):
+ *   🤖 AI | claude-sonnet-4-20250514 | 3 msgs | 12 tools | max:4096
+ *   🔧 MCP | newrelic/get_entities (accountId=123, domain=APM)
+ *     ✓ newrelic/get_entities 245ms {entities, count}
+ *   ← AI | 1.23s | 1,234 tok (890/344) | cache:500
+ *   ⚙️ TOOLS | 2/2 ok | 489ms total
+ *
+ * Example output (detailed mode - LOG_COMPACT=false):
+ *   ══════════════════════════════════════════════════════════════
+ *   🤖 AI REQUEST [12:34:56.789]
+ *   ──────────────────────────────────────────────────────────────
+ *   Model:          claude-sonnet-4-20250514
+ *   Messages:       3
+ *   ...
  */
 
 // ANSI color codes for terminal output
@@ -47,6 +66,9 @@ const defaultOptions: LogOptions = {
   verbose: process.env.LOG_VERBOSE === 'true',
   maxLength: 500,
 };
+
+// Check if compact logging is enabled (default: true for cleaner output)
+const COMPACT_LOGGING = process.env.LOG_COMPACT !== 'false';
 
 /**
  * Format a timestamp for logging
@@ -107,6 +129,20 @@ export function logAIRequest(params: {
 }): void {
   const { model, messageCount, toolCount, hasThinking, maxTokens, conversationId } = params;
 
+  if (COMPACT_LOGGING) {
+    // Single-line compact format
+    const parts = [
+      `${colors.cyan}${symbols.ai} AI${colors.reset}`,
+      `${colors.bright}${model}${colors.reset}`,
+      `${messageCount} msgs`,
+      `${toolCount} tools`,
+    ];
+    if (hasThinking) parts.push(`${colors.yellow}thinking${colors.reset}`);
+    if (maxTokens) parts.push(`max:${maxTokens}`);
+    console.log(parts.join(' | '));
+    return;
+  }
+
   console.log('');
   console.log(divider('═'));
   console.log(
@@ -155,6 +191,23 @@ export function logAIResponse(params: {
 
   const totalTokens = inputTokens + outputTokens;
 
+  if (COMPACT_LOGGING) {
+    // Single-line compact format
+    const parts = [
+      `${colors.green}${symbols.response} AI${colors.reset}`,
+      `${colors.bright}${formatDuration(duration)}${colors.reset}`,
+      `${totalTokens.toLocaleString()} tok (${inputTokens}/${outputTokens})`,
+    ];
+    if (cacheHits && cacheHits > 0) {
+      parts.push(`${colors.green}cache:${cacheHits}${colors.reset}`);
+    }
+    if (toolCallCount && toolCallCount > 0) {
+      parts.push(`${toolCallCount} tools`);
+    }
+    console.log(parts.join(' | '));
+    return;
+  }
+
   console.log('');
   console.log(
     `${colors.green}${symbols.response} AI RESPONSE ${colors.reset}` +
@@ -194,6 +247,17 @@ export function logMCPToolCall(params: {
   const { serverName, toolName, input, options = {} } = params;
   const opts = { ...defaultOptions, ...options };
 
+  if (COMPACT_LOGGING) {
+    // Single-line compact format with key input params
+    const inputSummary = input ? summarizeInput(input) : '';
+    console.log(
+      `${colors.magenta}${symbols.mcp} MCP${colors.reset} | ` +
+      `${colors.bright}${serverName}${colors.reset}/${toolName}` +
+      (inputSummary ? ` ${colors.gray}${inputSummary}${colors.reset}` : '')
+    );
+    return;
+  }
+
   console.log('');
   console.log(
     `${colors.magenta}${symbols.mcp} MCP TOOL CALL ${colors.reset}` +
@@ -208,6 +272,33 @@ export function logMCPToolCall(params: {
     console.log(colors.gray + formatValue(input, opts.maxLength) + colors.reset);
   }
   console.log(divider());
+}
+
+/**
+ * Create a compact summary of input parameters
+ */
+function summarizeInput(input: Record<string, unknown>): string {
+  const entries = Object.entries(input);
+  if (entries.length === 0) return '';
+
+  const summary = entries
+    .slice(0, 3) // Max 3 params in summary
+    .map(([key, value]) => {
+      let valueStr: string;
+      if (typeof value === 'string') {
+        valueStr = value.length > 30 ? value.slice(0, 30) + '...' : value;
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        valueStr = String(value);
+      } else if (Array.isArray(value)) {
+        valueStr = `[${value.length}]`;
+      } else {
+        valueStr = '{...}';
+      }
+      return `${key}=${valueStr}`;
+    })
+    .join(', ');
+
+  return entries.length > 3 ? `(${summary}, +${entries.length - 3} more)` : `(${summary})`;
 }
 
 /**
@@ -228,6 +319,19 @@ export function logMCPToolResult(params: {
   const statusColor = success ? colors.green : colors.red;
   const statusSymbol = success ? symbols.success : symbols.error;
   const status = success ? 'SUCCESS' : 'FAILED';
+
+  if (COMPACT_LOGGING) {
+    // Single-line compact format
+    const resultSummary = result ? summarizeResult(result) : '';
+    console.log(
+      `  ${statusColor}${statusSymbol}${colors.reset} ` +
+      `${colors.bright}${serverName}${colors.reset}/${toolName} ` +
+      `${colors.gray}${formatDuration(duration)}${colors.reset}` +
+      (error ? ` ${colors.red}${error.slice(0, 50)}${colors.reset}` : '') +
+      (resultSummary ? ` ${colors.dim}${resultSummary}${colors.reset}` : '')
+    );
+    return;
+  }
 
   console.log('');
   console.log(
@@ -251,6 +355,30 @@ export function logMCPToolResult(params: {
 }
 
 /**
+ * Create a compact summary of result data
+ */
+function summarizeResult(result: unknown): string {
+  if (result === null || result === undefined) return '';
+
+  if (typeof result === 'string') {
+    return result.length > 50 ? `"${result.slice(0, 50)}..."` : `"${result}"`;
+  }
+
+  if (Array.isArray(result)) {
+    return `[${result.length} items]`;
+  }
+
+  if (typeof result === 'object') {
+    const keys = Object.keys(result as Record<string, unknown>);
+    if (keys.length === 0) return '{}';
+    if (keys.length <= 3) return `{${keys.join(', ')}}`;
+    return `{${keys.slice(0, 3).join(', ')}, +${keys.length - 3}}`;
+  }
+
+  return String(result).slice(0, 30);
+}
+
+/**
  * Log a batch of tool calls in a summary format
  */
 export function logToolSummary(tools: Array<{
@@ -259,6 +387,19 @@ export function logToolSummary(tools: Array<{
   duration: number;
 }>): void {
   if (tools.length === 0) return;
+
+  const totalDuration = tools.reduce((acc, t) => acc + t.duration, 0);
+  const successCount = tools.filter(t => t.success).length;
+
+  if (COMPACT_LOGGING) {
+    // Single-line compact summary
+    console.log(
+      `${colors.blue}${symbols.tool} TOOLS${colors.reset} | ` +
+      `${successCount}/${tools.length} ok | ` +
+      `${colors.gray}${formatDuration(totalDuration)} total${colors.reset}`
+    );
+    return;
+  }
 
   console.log('');
   console.log(
@@ -279,9 +420,6 @@ export function logToolSummary(tools: Array<{
       `${colors.gray}(${formatDuration(tool.duration)})${colors.reset}`
     );
   }
-
-  const totalDuration = tools.reduce((acc, t) => acc + t.duration, 0);
-  const successCount = tools.filter(t => t.success).length;
 
   console.log(divider());
   console.log(
