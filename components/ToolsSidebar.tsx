@@ -87,6 +87,142 @@ function ToggleSwitch({ enabled, onToggle }: ToggleSwitchProps) {
   );
 }
 
+// New Relic Account type
+interface NewRelicAccount {
+  id: number;
+  name: string;
+  isDefault: boolean;
+  hasData: boolean;
+}
+
+// New Relic Account Selector Component
+interface NewRelicAccountSelectorProps {
+  selectedAccount: NewRelicAccount | null;
+  onSelectAccount: (account: NewRelicAccount | null) => void;
+}
+
+function NewRelicAccountSelector({ selectedAccount, onSelectAccount }: NewRelicAccountSelectorProps) {
+  const [accounts, setAccounts] = useState<NewRelicAccount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Fetch accounts from API
+  useEffect(() => {
+    async function fetchAccounts() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/newrelic/accounts');
+        if (!response.ok) {
+          if (response.status === 503) {
+            setError('New Relic not configured');
+            return;
+          }
+          throw new Error('Failed to fetch accounts');
+        }
+        const data = await response.json();
+        if (data.success && data.data) {
+          setAccounts(data.data);
+          // Auto-select the default account if none selected
+          if (!selectedAccount) {
+            const defaultAccount = data.data.find((a: NewRelicAccount) => a.isDefault);
+            if (defaultAccount) {
+              onSelectAccount(defaultAccount);
+            }
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load accounts');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAccounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="mb-4">
+      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--md-on-surface-variant)] mb-2 block">
+        Account
+      </label>
+
+      <div className="relative">
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          disabled={loading || !!error}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-[var(--md-surface-container-high)] border border-[var(--md-outline-variant)] hover:border-[var(--md-outline)] transition-colors disabled:opacity-50"
+        >
+          <div className="flex flex-col items-start min-w-0 flex-1">
+            {loading ? (
+              <span className="text-sm text-[var(--md-on-surface-variant)]">Loading accounts...</span>
+            ) : error ? (
+              <span className="text-sm text-[var(--md-error)]">{error}</span>
+            ) : selectedAccount ? (
+              <>
+                <span className="text-sm text-[var(--md-on-surface)] truncate w-full">{selectedAccount.name}</span>
+                <span className="text-[10px] font-mono text-[var(--md-on-surface-variant)]">ID: {selectedAccount.id}</span>
+              </>
+            ) : (
+              <span className="text-sm text-[var(--md-on-surface-variant)]">
+                {accounts.length > 0 ? 'Select an account...' : 'No accounts found'}
+              </span>
+            )}
+          </div>
+          <svg
+            viewBox="0 0 24 24"
+            className={`w-4 h-4 text-[var(--md-on-surface-variant)] flex-shrink-0 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        {/* Dropdown */}
+        {isDropdownOpen && accounts.length > 0 && (
+          <div
+            className="absolute top-full left-0 right-0 mt-1 z-50 bg-[var(--md-surface-container)] border border-[var(--md-outline-variant)] rounded-lg shadow-xl overflow-hidden"
+            style={{ maxHeight: '200px' }}
+          >
+            <div className="overflow-y-auto" style={{ maxHeight: '200px' }}>
+              {accounts.map((account) => (
+                <button
+                  key={account.id}
+                  onClick={() => {
+                    onSelectAccount(account);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`w-full flex flex-col gap-0.5 px-3 py-2 text-left hover:bg-[var(--md-surface-container-high)] transition-colors ${
+                    selectedAccount?.id === account.id ? 'bg-[var(--md-surface-container-highest)]' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="text-sm text-[var(--md-on-surface)] truncate flex-1">{account.name}</span>
+                    {account.isDefault && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]">
+                        Default
+                      </span>
+                    )}
+                    {selectedAccount?.id === account.id && (
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--md-accent)] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-mono text-[var(--md-on-surface-variant)]">ID: {account.id}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // New Relic Entity type
 interface NewRelicEntity {
   guid: string;
@@ -247,20 +383,23 @@ function NewRelicEntitySelector({ selectedEntity, onSelectEntity }: NewRelicEnti
                         setIsDropdownOpen(false);
                         setSearchQuery('');
                       }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[var(--md-surface-container-high)] transition-colors ${
+                      className={`w-full flex flex-col gap-0.5 px-3 py-2 text-left hover:bg-[var(--md-surface-container-high)] transition-colors ${
                         selectedEntity?.guid === entity.guid ? 'bg-[var(--md-surface-container-highest)]' : ''
                       }`}
                     >
-                      <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: getAlertColor(entity.alertSeverity) }}
-                      />
-                      <span className="text-sm text-[var(--md-on-surface)] truncate flex-1">{entity.name}</span>
-                      {selectedEntity?.guid === entity.guid && (
-                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--md-accent)]" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
+                      <div className="flex items-center gap-2 w-full">
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getAlertColor(entity.alertSeverity) }}
+                        />
+                        <span className="text-sm text-[var(--md-on-surface)] truncate flex-1">{entity.name}</span>
+                        {selectedEntity?.guid === entity.guid && (
+                          <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--md-accent)] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono text-[var(--md-on-surface-variant)] truncate pl-4">{entity.guid}</span>
                     </button>
                   ))}
                 </div>
@@ -305,6 +444,7 @@ interface McpDetailPanelProps {
 
 function McpDetailPanel({ mcpId, mcpName, mcpDescription, isEnabled, isOpen, onClose }: McpDetailPanelProps) {
   const tools = MCP_TOOLS[mcpId] || [];
+  const [selectedAccount, setSelectedAccount] = useState<NewRelicAccount | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<NewRelicEntity | null>(null);
   const isNewRelic = mcpId === 'newrelic';
 
@@ -372,12 +512,18 @@ function McpDetailPanel({ mcpId, mcpName, mcpDescription, isEnabled, isOpen, onC
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 py-4">
-            {/* New Relic Entity Selector */}
+            {/* New Relic Account & Entity Selectors */}
             {isNewRelic && (
-              <NewRelicEntitySelector
-                selectedEntity={selectedEntity}
-                onSelectEntity={setSelectedEntity}
-              />
+              <>
+                <NewRelicAccountSelector
+                  selectedAccount={selectedAccount}
+                  onSelectAccount={setSelectedAccount}
+                />
+                <NewRelicEntitySelector
+                  selectedEntity={selectedEntity}
+                  onSelectEntity={setSelectedEntity}
+                />
+              </>
             )}
 
             {/* Tools List */}
