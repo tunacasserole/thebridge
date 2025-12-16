@@ -19,7 +19,7 @@ import {
 const getEnv = () => ({
   ROOTLY_API_KEY: process.env.ROOTLY_API_KEY || '',
   GITHUB_TOKEN: process.env.GITHUB_TOKEN || '',
-  GITHUB_OWNER: process.env.GITHUB_OWNER || 'g2crowd',
+  GITHUB_OWNER: process.env.GITHUB_OWNER || '',
   GITHUB_REPOS: (process.env.GITHUB_REPOS || '').split(',').filter(Boolean),
   JIRA_BASE_URL: process.env.ATLASSIAN_DOMAIN ? `https://${process.env.ATLASSIAN_DOMAIN}` : '',
   JIRA_EMAIL: process.env.ATLASSIAN_EMAIL || '',

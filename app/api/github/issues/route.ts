@@ -1,7 +1,7 @@
 // GitHub Issues API Route - Create issues for TheBridge project
 // SAFETY: This route ONLY creates issues in tunacasserole/thebridge
 // It does NOT use GITHUB_OWNER/GITHUB_REPOS env vars to prevent accidental
-// issues being created in work repositories (e.g., g2crowd)
+// issues being created in other repositories
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
