@@ -10,6 +10,36 @@ TheBridge is an AI-powered SRE Command Center built with Next.js 15, featuring a
 - OAuth authentication (GitHub, Google)
 - User-specific API key management
 
+## Quick Start
+
+Get up and running in 5 minutes:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/tunacasserole/thebridge.git
+   cd thebridge
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env.local
+   ```
+   Edit `.env.local` with your database URL, API keys, and OAuth credentials.
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open the app**
+
+   Visit [http://localhost:3000](http://localhost:3000) in your browser.
+
 ## Getting Started
 
 ### Prerequisites
