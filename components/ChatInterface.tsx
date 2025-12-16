@@ -7,6 +7,7 @@ import TokenBudgetDisplay from './TokenBudgetDisplay';
 import QueryOptimizer from './QueryOptimizer';
 import ResponseModeSelector, { useResponseMode, type ResponseMode } from './ResponseModeSelector';
 import TokenUsageFeedback from './TokenUsageFeedback';
+import ConversationTokenCounter from './ConversationTokenCounter';
 
 interface FileAttachment {
   name: string;
@@ -883,8 +884,15 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
       {/* Messages State */}
       {hasMessages && (
         <div className="flex flex-col flex-1 min-h-0">
+          {/* Token counter - fixed at top right */}
+          <div className="sticky top-0 z-10 flex justify-end px-4 pt-3 pb-2 bg-gradient-to-b from-[var(--md-surface)] to-transparent pointer-events-none">
+            <div className="pointer-events-auto">
+              <ConversationTokenCounter messages={messages} />
+            </div>
+          </div>
+
           {/* Scrollable messages area */}
-          <div className="flex-1 overflow-y-auto px-4 pt-6 min-h-0">
+          <div className="flex-1 overflow-y-auto px-4 min-h-0">
             {error && (
               <div className="py-2 mb-4 bg-[var(--md-warning-container)] border border-[var(--md-warning)] rounded-lg">
                 <p className="text-xs text-[var(--md-on-warning-container)] px-4">
