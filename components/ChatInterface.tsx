@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import TokenBudgetDisplay from './TokenBudgetDisplay';
 import QueryOptimizer from './QueryOptimizer';
 import ResponseModeSelector, { useResponseMode, type ResponseMode } from './ResponseModeSelector';
 import TokenUsageFeedback from './TokenUsageFeedback';
@@ -581,6 +580,22 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
 
   const hasMessages = messages.length > 0;
 
+  // Calculate aggregate token usage from all messages
+  const aggregateTokenUsage = useMemo(() => {
+    return messages.reduce(
+      (acc, msg) => {
+        if (msg.tokenUsage) {
+          acc.inputTokens += msg.tokenUsage.inputTokens;
+          acc.outputTokens += msg.tokenUsage.outputTokens;
+          acc.total += msg.tokenUsage.total;
+          acc.cacheHits = (acc.cacheHits || 0) + (msg.tokenUsage.cacheHits || 0);
+        }
+        return acc;
+      },
+      { inputTokens: 0, outputTokens: 0, total: 0, cacheHits: 0 }
+    );
+  }, [messages]);
+
   // Format tool name to show MCP server and tool name
   const formatToolName = (name: string): { server: string | null; tool: string } => {
     // Pattern: mcp__servername__toolname
@@ -818,12 +833,6 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
         </button>
       </div>
 
-      {/* Token Budget Display */}
-      {sessionTokens > 0 && (
-        <div className="mt-2 flex justify-center">
-          <TokenBudgetDisplay tokensUsed={sessionTokens} tokenLimit={TOKEN_LIMIT} />
-        </div>
-      )}
     </div>
   );
 
@@ -1170,6 +1179,16 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
               {inputFormJSX}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Fixed Token Usage Display - positioned to left of FAB */}
+      {aggregateTokenUsage.total > 0 && (
+        <div className="fixed bottom-6 right-24 z-40">
+          <TokenUsageFeedback
+            usage={aggregateTokenUsage}
+            onOptimizeClick={() => setShowQueryOptimizer(true)}
+          />
         </div>
       )}
     </div>
