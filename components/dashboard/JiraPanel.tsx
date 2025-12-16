@@ -286,7 +286,7 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
 
     return (
       <div
-        className="group rounded-xl p-4 transition-all duration-200 hover:shadow-lg cursor-pointer"
+        className="group rounded-xl p-3 transition-all duration-200 hover:shadow-lg cursor-pointer"
         style={{
           background: isBug ? 'var(--md-error-container)' : 'var(--md-surface-container-high)',
           border: isBug ? '1px solid var(--md-error)' : '1px solid var(--md-outline-variant)',
@@ -308,113 +308,99 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              {type === 'task' && (
-                <Icon name="task" size={16} color="var(--md-tertiary)" decorative />
-              )}
-              <span
-                className="text-xs font-mono font-semibold"
-                style={{ color: isBug ? 'var(--md-error)' : type === 'task' ? 'var(--md-tertiary)' : 'var(--md-primary)' }}
-              >
-                {task.key}
-              </span>
-
-              {/* Status with dropdown */}
-              <div className="relative status-dropdown-container">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleStatusDropdown(task.key);
-                  }}
-                  disabled={updatingStatus === task.key}
-                  className="px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 hover:opacity-80 transition-opacity disabled:opacity-50"
-                  style={{
-                    background: `${getStatusColor(task.statusCategory)}22`,
-                    color: getStatusColor(task.statusCategory),
-                  }}
+            {/* Header - includes key, status, parent, and assignee */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                {type === 'task' && (
+                  <Icon name="task" size={16} color="var(--md-tertiary)" decorative />
+                )}
+                <span
+                  className="text-xs font-mono font-semibold"
+                  style={{ color: isBug ? 'var(--md-error)' : type === 'task' ? 'var(--md-tertiary)' : 'var(--md-primary)' }}
                 >
-                  {updatingStatus === task.key ? (
-                    <>
-                      <Icon name="sync" size={12} className="animate-spin" decorative />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      {task.status}
-                      <Icon name="expand_more" size={14} decorative />
-                    </>
-                  )}
-                </button>
+                  {task.key}
+                </span>
 
-                {/* Transitions dropdown */}
-                {statusDropdown === task.key && transitions[task.key] && (
-                  <div
-                    className="absolute z-20 mt-1 rounded-lg shadow-lg overflow-hidden min-w-[150px]"
-                    style={{
-                      background: 'var(--md-surface-container-high)',
-                      border: '1px solid var(--md-outline-variant)',
+                {/* Status with dropdown */}
+                <div className="relative status-dropdown-container">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleStatusDropdown(task.key);
                     }}
-                    onClick={(e) => e.stopPropagation()}
+                    disabled={updatingStatus === task.key}
+                    className="px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 hover:opacity-80 transition-opacity disabled:opacity-50"
+                    style={{
+                      background: `${getStatusColor(task.statusCategory)}22`,
+                      color: getStatusColor(task.statusCategory),
+                    }}
                   >
-                    {transitions[task.key].map((transition) => (
-                      <button
-                        key={transition.id}
-                        onClick={() => handleStatusUpdate(task.key, transition.id)}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
-                        style={{ color: 'var(--md-on-surface)' }}
-                      >
-                        {transition.name}
-                      </button>
-                    ))}
-                  </div>
+                    {updatingStatus === task.key ? (
+                      <>
+                        <Icon name="sync" size={12} className="animate-spin" decorative />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        {task.status}
+                        <Icon name="expand_more" size={14} decorative />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Transitions dropdown */}
+                  {statusDropdown === task.key && transitions[task.key] && (
+                    <div
+                      className="absolute z-20 mt-1 rounded-lg shadow-lg overflow-hidden min-w-[150px]"
+                      style={{
+                        background: 'var(--md-surface-container-high)',
+                        border: '1px solid var(--md-outline-variant)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {transitions[task.key].map((transition) => (
+                        <button
+                          key={transition.id}
+                          onClick={() => handleStatusUpdate(task.key, transition.id)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-opacity-10 hover:bg-bridge-text-primary transition-colors"
+                          style={{ color: 'var(--md-on-surface)' }}
+                        >
+                          {transition.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {task.parentKey && (
+                  <span className="text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
+                    → {task.parentKey}
+                  </span>
                 )}
               </div>
 
-              {task.parentKey && (
-                <span className="text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
-                  → {task.parentKey}
-                </span>
+              {/* Assignee - right justified */}
+              {task.assignee && (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-xs" style={{ color: isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface-variant)' }}>
+                    {task.assignee.name}
+                  </span>
+                  <img
+                    src={task.assignee.avatar}
+                    alt={task.assignee.name}
+                    className="w-5 h-5 rounded-full"
+                  />
+                </div>
               )}
             </div>
 
             {/* Title */}
             <h3
-              className="text-base font-semibold mb-2 group-hover:text-opacity-80 transition-all"
+              className="text-sm font-semibold group-hover:text-opacity-80 transition-all"
               style={{ color: isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface)' }}
             >
               {task.title}
             </h3>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {task.assignee && (
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={task.assignee.avatar}
-                      alt={task.assignee.name}
-                      className="w-6 h-6 rounded-full"
-                    />
-                    <span className="text-sm" style={{ color: isBug ? 'var(--md-on-error-container)' : 'var(--md-on-surface-variant)' }}>
-                      {task.assignee.name}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Priority */}
-              <span
-                className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"
-                style={{
-                  background: `${priority.color}22`,
-                  color: priority.color,
-                }}
-              >
-                <Icon name={priority.icon} size={14} decorative />
-                {priority.label}
-              </span>
-            </div>
           </div>
 
           {/* External link indicator */}
