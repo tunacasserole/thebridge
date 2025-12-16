@@ -21,6 +21,14 @@ export default function Footer() {
         </p>
         <span className="hidden md:block text-[var(--md-outline-variant)]">|</span>
         <Link
+          href="/settings/mcp"
+          className="text-xs text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)] transition-colors duration-200"
+          title="Manage MCP Tools"
+        >
+          Tools
+        </Link>
+        <span className="text-[var(--md-outline-variant)]">|</span>
+        <Link
           href="/code"
           className="text-xs text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)] transition-colors duration-200"
           title="View code examples"

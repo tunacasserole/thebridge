@@ -469,8 +469,6 @@ export default function Home() {
               <ChatInterface
                 ref={chatRef}
                 enabledTools={Array.from(enabledTools)}
-                onToggleTools={cycleSidebarMode}
-                toolsOpen={showDevTools}
                 onLoadingChange={setIsAgentActive}
                 conversationId={currentConversationId}
                 onConversationCreated={handleConversationCreated}
