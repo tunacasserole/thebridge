@@ -18,6 +18,7 @@ interface FileAttachment {
 interface ToolCall {
   name: string;
   input?: Record<string, unknown>;
+  paramSummary?: string;
 }
 
 interface TokenUsage {
@@ -477,6 +478,9 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                 if (data.input) {
                   toolCall.input = data.input;
                 }
+                if (data.paramSummary) {
+                  toolCall.paramSummary = data.paramSummary;
+                }
                 collectedToolCalls.push(toolCall);
                 setStreamingToolCalls([...collectedToolCalls]);
               } else if (data.type === 'text') {
@@ -918,17 +922,26 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                               );
                             }
 
-                            // Compact mode: show server and tool name
+                            // Compact mode: show server, tool name, and parameter summary
                             return (
                               <span
                                 key={idx}
                                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono bg-[var(--md-surface-container-high)]"
+                                title={toolCall.paramSummary || undefined}
                               >
                                 {server && (
                                   <span className="text-[var(--md-accent)]">{server}</span>
                                 )}
                                 {server && <span className="text-[var(--md-outline)]">/</span>}
                                 <span className="text-[var(--md-on-surface-variant)]">{tool}</span>
+                                {toolCall.paramSummary && (
+                                  <>
+                                    <span className="text-[var(--md-outline)]"> </span>
+                                    <span className="text-[var(--md-on-surface-variant)] opacity-70">
+                                      ({toolCall.paramSummary})
+                                    </span>
+                                  </>
+                                )}
                               </span>
                             );
                           })}
@@ -1095,7 +1108,7 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                               );
                             }
 
-                            // Compact streaming
+                            // Compact streaming with parameter summary
                             return (
                               <div
                                 key={idx}
@@ -1104,6 +1117,7 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                                     ? 'text-[var(--md-success)]'
                                     : 'text-[var(--md-on-surface-variant)]'
                                 }`}
+                                title={toolCall.paramSummary || undefined}
                               >
                                 {isLatest ? (
                                   <svg className="w-3 h-3 animate-spin flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1120,6 +1134,14 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                                 )}
                                 {server && <span className="text-[var(--md-outline)]">/</span>}
                                 <span className="truncate">{tool}</span>
+                                {toolCall.paramSummary && (
+                                  <>
+                                    <span className="text-[var(--md-outline)]"> </span>
+                                    <span className="text-[var(--md-on-surface-variant)] opacity-70 truncate">
+                                      ({toolCall.paramSummary})
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             );
                           })}
