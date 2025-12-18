@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useJiraData } from '@/hooks/useJiraData';
 import { colors } from '@/lib/colors';
 import Icon from '@/components/ui/Icon';
@@ -17,13 +17,15 @@ interface JiraIssueListProps {
 export default function JiraIssueList({ isOpen }: JiraIssueListProps) {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [selectedEpic, setSelectedEpic] = useState<string>('all');
-  const { data, loading, error, refetch } = useJiraData(REFRESH_INTERVAL, isOpen ? Date.now() : undefined);
+  const { data, loading, error, refetch } = useJiraData(REFRESH_INTERVAL);
 
-  // Refetch when panel opens
+  // Refetch when panel opens (using ref to track previous state)
+  const prevOpenRef = useRef(isOpen);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevOpenRef.current) {
       refetch();
     }
+    prevOpenRef.current = isOpen;
   }, [isOpen, refetch]);
 
   // Get unique epics for filter
