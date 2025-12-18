@@ -148,6 +148,35 @@ This seeds 20+ servers including:
 - **Official**: Coralogix, New Relic, Rootly, Jira, Confluence, GitHub, Slack, Cloudflare, Figma, Chrome DevTools
 - **Community**: Metabase, Kubernetes, Prometheus, Snowflake, Airbyte, Argo CD, Grafana, Sidekiq, Zoom, Shell
 
+### Important Notes
+
+#### Jira Integration
+**Note:** Jira integration in TheBridge uses the built-in REST API client (`lib/jira/client.ts`), not the Atlassian MCP Server.
+
+The Atlassian Remote MCP Server requires complex OAuth setup and is not recommended for serverless environments like Vercel. Instead, configure Jira via environment variables:
+
+```bash
+JIRA_BASE_URL=https://your-org.atlassian.net
+JIRA_EMAIL=you@example.com
+JIRA_API_TOKEN=ATATT...
+JIRA_PROJECT_KEY=PROJ
+```
+
+To get your Jira API token:
+1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token"
+3. Copy the token and add it to your `.env` file
+
+The built-in Jira client provides:
+- Dashboard with epics, stories, tasks, and bugs
+- Issue search and filtering
+- Status updates and transitions
+- Comment management
+- Create new issues
+
+#### Confluence Integration
+**Note:** Confluence also has the same OAuth requirements as Jira when using the Atlassian MCP Server. For production use, consider using the Confluence REST API similar to the Jira implementation.
+
 ## Usage Flow
 
 1. User navigates to Settings → MCP Servers (from user menu)

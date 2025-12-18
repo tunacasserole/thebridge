@@ -148,13 +148,16 @@ const MCP_SERVER_DEFINITIONS = [
   {
     slug: 'jira',
     name: 'Jira',
-    description: 'Issue and project tracking by Atlassian',
+    description: 'Issue and project tracking by Atlassian (OAuth required - use built-in REST API instead)',
     icon: 'task_alt',
     category: 'productivity',
     transportType: 'sse',
     configTemplate: {
       type: 'sse',
       url: 'https://mcp.atlassian.com/v1/sse',
+      // Note: Requires OAuth setup - not recommended for serverless
+      // TheBridge has built-in Jira REST API integration via env vars
+      // See: docs/integrations/JIRA.md
     },
     docsUrl: 'https://developer.atlassian.com/cloud/mcp/',
     isOfficial: true,
