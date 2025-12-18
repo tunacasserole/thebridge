@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/Icon';
 import { colors } from '@/lib/colors';
+import GitHubIssueList from './GitHubIssueList';
 
 interface CreateIssueFormData {
   title: string;
@@ -121,27 +122,36 @@ export default function GitHubIssueButton() {
             position: 'absolute',
             top: 'calc(100% + 8px)',
             right: 0,
-            width: '380px',
+            width: '800px',
             background: colors.surfaceContainer,
             border: `1px solid ${colors.outline}`,
             borderRadius: '16px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
             zIndex: 1000,
             overflow: 'hidden',
+            display: 'flex',
+            maxHeight: '600px',
           }}
         >
-          {/* Header */}
+          {/* Left Column - Issue List */}
           <div
             style={{
-              padding: '16px 20px',
-              borderBottom: `1px solid ${colors.outline}`,
+              flex: 1,
+              borderRight: `1px solid ${colors.outline}`,
               display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
+              flexDirection: 'column',
             }}
           >
-            <Icon name="account_tree" size={20} style={{ color: colors.tertiary }} decorative />
-            <div style={{ flex: 1 }}>
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: `1px solid ${colors.outline}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <Icon name="list" size={20} style={{ color: colors.tertiary }} decorative />
               <h3
                 style={{
                   fontSize: '14px',
@@ -150,35 +160,70 @@ export default function GitHubIssueButton() {
                   margin: 0,
                 }}
               >
-                Create GitHub Issue
+                GitHub Issues
               </h3>
-              <p
-                style={{
-                  fontSize: '11px',
-                  color: colors.onSurfaceVariant,
-                  margin: 0,
-                }}
-              >
-                Report a bug or request a feature
-              </p>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: '4px',
-                cursor: 'pointer',
-                color: colors.onSurfaceVariant,
-                borderRadius: '8px',
-              }}
-            >
-              <Icon name="close" size={18} decorative />
-            </button>
+            <div style={{ flex: 1, overflow: 'hidden', padding: '16px 20px' }}>
+              <GitHubIssueList isOpen={isOpen} />
+            </div>
           </div>
 
-          {/* Content */}
-          <div style={{ padding: '16px 20px' }}>
+          {/* Right Column - Create Issue Form */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: `1px solid ${colors.outline}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <Icon name="account_tree" size={20} style={{ color: colors.tertiary }} decorative />
+              <div style={{ flex: 1 }}>
+                <h3
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: colors.onSurface,
+                    margin: 0,
+                  }}
+                >
+                  Create GitHub Issue
+                </h3>
+                <p
+                  style={{
+                    fontSize: '11px',
+                    color: colors.onSurfaceVariant,
+                    margin: 0,
+                  }}
+                >
+                  Report a bug or request a feature
+                </p>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  color: colors.onSurfaceVariant,
+                  borderRadius: '8px',
+                }}
+              >
+                <Icon name="close" size={18} decorative />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div style={{ padding: '16px 20px', flex: 1, overflowY: 'auto' }}>
             {success ? (
               <div
                 style={{
@@ -383,6 +428,7 @@ export default function GitHubIssueButton() {
                 </div>
               </form>
             )}
+            </div>
           </div>
         </div>
       )}
