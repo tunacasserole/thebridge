@@ -817,7 +817,17 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
               <div className="flex items-center justify-center gap-3">
                 <span className="text-[#fbbf24] text-4xl">✺</span>
                 <h2 className="text-4xl font-serif text-[var(--md-on-surface)]">
-                  AA-Ron returns!
+                  {(() => {
+                    const hour = new Date().getHours();
+                    const greetings = [
+                      { condition: hour < 5, text: "Burning the midnight oil, AA-Ron?" },
+                      { condition: hour < 12, text: "Good morning, AA-Ron! ☀️" },
+                      { condition: hour < 17, text: "Good afternoon, AA-Ron!" },
+                      { condition: hour < 20, text: "Good evening, AA-Ron!" },
+                      { condition: true, text: "Still at it, AA-Ron? 🌙" }
+                    ];
+                    return greetings.find(g => g.condition)?.text || "Welcome back, AA-Ron!";
+                  })()}
                 </h2>
               </div>
             </div>
