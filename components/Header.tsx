@@ -7,6 +7,7 @@ import { ThemeSwitch } from './ThemeSwitch';
 import { useTheme } from '@/lib/theme';
 import RoleSwitcher from './header/RoleSwitcher';
 import GitHubIssueButton from './header/GitHubIssueButton';
+import JiraIssueButton from './header/JiraIssueButton';
 import HeaderLauncherButton from './dashboard/HeaderLauncherButton';
 import { UserMenu } from './auth';
 
@@ -89,6 +90,7 @@ export default function Header() {
         {/* Status & Theme Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           <GitHubIssueButton />
+          <JiraIssueButton />
           <RoleSwitcher variant="chip" size="small" />
           <ThemeSwitch />
           <UserMenu />
