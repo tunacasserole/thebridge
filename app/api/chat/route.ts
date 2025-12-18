@@ -308,14 +308,16 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
                 );
               } else if (block.type === 'tool_use') {
                 toolUseBlocks.push(block);
-                // Stream tool call to client
-                const toolEvent: { type: string; name: string; input?: unknown } = {
+                // Stream tool call to client with parameter summary
+                const toolEvent: { type: string; name: string; input?: unknown; paramSummary?: string } = {
                   type: 'tool',
                   name: block.name,
                 };
                 if (verbose) {
                   toolEvent.input = block.input;
                 }
+                // Add compact parameter summary for better UX
+                toolEvent.paramSummary = summarizeInputForUI(block.input as Record<string, unknown>);
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(toolEvent)}\n\n`));
                 toolCallsHistory.push({ name: block.name, input: block.input });
               } else if (block.type === 'thinking') {
@@ -601,6 +603,37 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
       { status: 500 }
     );
   }
+}
+
+// Helper to create a compact summary of input parameters for UI display
+function summarizeInputForUI(input: Record<string, unknown> | unknown): string {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return '';
+  }
+
+  const entries = Object.entries(input as Record<string, unknown>);
+  if (entries.length === 0) return '';
+
+  const summary = entries
+    .slice(0, 3) // Max 3 params in summary
+    .map(([key, value]) => {
+      let valueStr: string;
+      if (typeof value === 'string') {
+        valueStr = value.length > 30 ? value.slice(0, 30) + '...' : value;
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        valueStr = String(value);
+      } else if (Array.isArray(value)) {
+        valueStr = `[${value.length}]`;
+      } else if (value === null || value === undefined) {
+        valueStr = 'null';
+      } else {
+        valueStr = '{...}';
+      }
+      return `${key}=${valueStr}`;
+    })
+    .join(', ');
+
+  return entries.length > 3 ? `${summary}, +${entries.length - 3} more` : summary;
 }
 
 // Helper to check if file is text-based
