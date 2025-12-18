@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 const KUBERNETES_FACTS = [
   // Pods
@@ -62,15 +62,11 @@ const KUBERNETES_FACTS = [
 ]
 
 export default function KubernetesFact() {
-  const [fact, setFact] = useState("")
-
-  useEffect(() => {
-    // Pick a random fact on mount
+  // Pick a random fact on mount
+  const [fact] = useState(() => {
     const randomIndex = Math.floor(Math.random() * KUBERNETES_FACTS.length)
-    setFact(KUBERNETES_FACTS[randomIndex])
-  }, [])
-
-  if (!fact) return null
+    return KUBERNETES_FACTS[randomIndex]
+  })
 
   return (
     <div className="mb-6 max-w-2xl mx-auto">
