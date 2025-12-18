@@ -346,42 +346,8 @@ export default function GitHubIssueButton() {
                   />
                 </div>
 
-                {/* Label and Submit Row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  {/* Label */}
-                  <div>
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        color: colors.onSurfaceVariant,
-                        marginBottom: '8px',
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      LABEL
-                    </label>
-                    <div
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '4px 10px',
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        color: '#fff',
-                        background: colors.tertiary,
-                        border: `1px solid ${colors.tertiary}`,
-                        borderRadius: '12px',
-                      }}
-                    >
-                      <Icon name="check" size={12} decorative />
-                      claude-triage
-                    </div>
-                  </div>
-
-                  {/* Submit */}
+                {/* Submit Button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button
                     type="submit"
                     disabled={isSubmitting || !formData.title.trim()}
