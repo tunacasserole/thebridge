@@ -6,7 +6,6 @@ import { colors } from '@/lib/colors';
 import GitHubIssueList from './GitHubIssueList';
 
 interface CreateIssueFormData {
-  title: string;
   body: string;
 }
 
@@ -17,7 +16,6 @@ export default function GitHubIssueButton() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ url: string; number: number } | null>(null);
   const [formData, setFormData] = useState<CreateIssueFormData>({
-    title: '',
     body: '',
   });
 
@@ -46,7 +44,7 @@ export default function GitHubIssueButton() {
   // Reset form when opening
   useEffect(() => {
     if (isOpen) {
-      setFormData({ title: '', body: '' });
+      setFormData({ body: '' });
       setError(null);
       setSuccess(null);
     }
@@ -54,8 +52,8 @@ export default function GitHubIssueButton() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      setError('Title is required');
+    if (!formData.body.trim()) {
+      setError('Description is required');
       return;
     }
 
@@ -66,7 +64,7 @@ export default function GitHubIssueButton() {
       const response = await fetch('/api/github/issues', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, labels: ['claude-triage'] }),
+        body: JSON.stringify({ body: formData.body, labels: ['claude-triage'] }),
       });
 
       const result = await response.json();
@@ -76,7 +74,7 @@ export default function GitHubIssueButton() {
       }
 
       setSuccess({ url: result.data.url, number: result.data.number });
-      setFormData({ title: '', body: '' });
+      setFormData({ body: '' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create issue');
     } finally {
@@ -84,7 +82,7 @@ export default function GitHubIssueButton() {
     }
   };
 
-  
+
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
@@ -185,7 +183,7 @@ export default function GitHubIssueButton() {
                 gap: '12px',
               }}
             >
-              <Icon name="account_tree" size={20} style={{ color: colors.tertiary }} decorative />
+              <Icon name="account_tree" size={20} style={{ color: colors.tertiary}} decorative />
               <div style={{ flex: 1 }}>
                 <h3
                   style={{
@@ -311,7 +309,7 @@ export default function GitHubIssueButton() {
                   </div>
                 )}
 
-                {/* Title */}
+                {/* Description - single field */}
                 <div style={{ marginBottom: '12px' }}>
                   <label
                     style={{
@@ -323,56 +321,17 @@ export default function GitHubIssueButton() {
                       letterSpacing: '0.5px',
                     }}
                   >
-                    TITLE *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Brief description of the issue"
-                    disabled={isSubmitting}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      fontSize: '13px',
-                      color: colors.onSurface,
-                      background: colors.surfaceContainerHigh,
-                      border: `1px solid ${colors.outline}`,
-                      borderRadius: '8px',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = colors.tertiary;
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = colors.outline;
-                    }}
-                  />
-                </div>
-
-                {/* Description */}
-                <div style={{ marginBottom: '12px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: colors.onSurfaceVariant,
-                      marginBottom: '6px',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    DESCRIPTION
+                    DESCRIBE THE ISSUE *
                   </label>
                   <textarea
                     value={formData.body}
-                    onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                    placeholder="Detailed description, steps to reproduce, etc."
+                    onChange={(e) => setFormData({ body: e.target.value })}
+                    placeholder="Describe the bug, feature request, or issue. We'll generate a title for you automatically."
                     disabled={isSubmitting}
-                    rows={4}
+                    rows={8}
                     style={{
                       width: '100%',
-                      padding: '10px 12px',
+                      padding: '12px',
                       fontSize: '13px',
                       color: colors.onSurface,
                       background: colors.surfaceContainerHigh,
@@ -381,6 +340,7 @@ export default function GitHubIssueButton() {
                       outline: 'none',
                       resize: 'vertical',
                       fontFamily: 'inherit',
+                      minHeight: '180px',
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = colors.tertiary;
@@ -395,7 +355,7 @@ export default function GitHubIssueButton() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button
                     type="submit"
-                    disabled={isSubmitting || !formData.title.trim()}
+                    disabled={isSubmitting || !formData.body.trim()}
                     style={{
                       padding: '10px 20px',
                       fontSize: '13px',
@@ -404,8 +364,8 @@ export default function GitHubIssueButton() {
                       background: `linear-gradient(135deg, ${colors.tertiary}, ${colors.tertiaryDark})`,
                       border: 'none',
                       borderRadius: '10px',
-                      cursor: isSubmitting || !formData.title.trim() ? 'not-allowed' : 'pointer',
-                      opacity: isSubmitting || !formData.title.trim() ? 0.6 : 1,
+                      cursor: isSubmitting || !formData.body.trim() ? 'not-allowed' : 'pointer',
+                      opacity: isSubmitting || !formData.body.trim() ? 0.6 : 1,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
