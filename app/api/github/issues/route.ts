@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await fetch(
-      \`https://api.github.com/repos/\${ISSUES_OWNER}/\${ISSUES_REPO}/issues?state=\${state}&per_page=\${per_page}&sort=updated&direction=desc\`,
+      `https://api.github.com/repos/${ISSUES_OWNER}/${ISSUES_REPO}/issues?state=${state}&per_page=${per_page}&sort=updated&direction=desc`,
       {
         headers: {
-          'Authorization': \`Bearer \${token}\`,
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       const errorText = await response.text();
       console.error('[GitHub Issues API] Error:', errorText);
       return NextResponse.json(
-        { success: false, error: \`GitHub API error: \${response.status}\` },
+        { success: false, error: `GitHub API error: ${response.status}` },
         { status: response.status }
       );
     }
@@ -117,11 +117,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const response = await fetch(
-      \`https://api.github.com/repos/\${ISSUES_OWNER}/\${ISSUES_REPO}/issues\`,
+      `https://api.github.com/repos/${ISSUES_OWNER}/${ISSUES_REPO}/issues`,
       {
         method: 'POST',
         headers: {
-          'Authorization': \`Bearer \${token}\`,
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
           'Content-Type': 'application/json',
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error('[GitHub Issues API] Error:', errorText);
       return NextResponse.json(
-        { success: false, error: \`GitHub API error: \${response.status}\` },
+        { success: false, error: `GitHub API error: ${response.status}` },
         { status: response.status }
       );
     }
@@ -192,11 +192,11 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const response = await fetch(
-      \`https://api.github.com/repos/\${ISSUES_OWNER}/\${ISSUES_REPO}/issues/\${body.issueNumber}\`,
+      `https://api.github.com/repos/${ISSUES_OWNER}/${ISSUES_REPO}/issues/${body.issueNumber}`,
       {
         method: 'PATCH',
         headers: {
-          'Authorization': \`Bearer \${token}\`,
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
           'Content-Type': 'application/json',
@@ -211,7 +211,7 @@ export async function PATCH(request: NextRequest) {
       const errorText = await response.text();
       console.error('[GitHub Issues API] Error:', errorText);
       return NextResponse.json(
-        { success: false, error: \`GitHub API error: \${response.status}\` },
+        { success: false, error: `GitHub API error: ${response.status}` },
         { status: response.status }
       );
     }
