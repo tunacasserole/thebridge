@@ -3,6 +3,7 @@
 // It does NOT use GITHUB_OWNER/GITHUB_REPOS env vars to prevent accidental
 // issues being created in other repositories
 import { NextRequest, NextResponse } from 'next/server';
+import Anthropic from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +11,41 @@ export const dynamic = 'force-dynamic';
 const ISSUES_OWNER = 'tunacasserole';
 const ISSUES_REPO = 'thebridge';
 
+// Helper function to generate a concise title from the issue description
+async function generateTitle(description: string): Promise<string> {
+  const anthropic = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  });
+
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 100,
+      messages: [
+        {
+          role: 'user',
+          content: `Generate a concise, descriptive title (max 10 words) for this GitHub issue. Return ONLY the title text, nothing else:\n\n${description}`,
+        },
+      ],
+    });
+
+    const content = message.content[0];
+    if (content.type === 'text') {
+      return content.text.trim();
+    }
+
+    // Fallback: use first line or first 50 chars
+    return description.split('\n')[0].substring(0, 50).trim();
+  } catch (error) {
+    console.error('[GitHub Issues API] Error generating title:', error);
+    // Fallback: use first line or first 50 chars
+    return description.split('\n')[0].substring(0, 50).trim();
+  }
+}
+
 interface CreateIssueBody {
-  title: string;
-  body?: string;
+  title?: string;
+  body: string;
   labels?: string[];
 }
 
@@ -108,14 +141,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!body.title?.trim()) {
+  if (!body.body?.trim()) {
     return NextResponse.json(
-      { success: false, error: 'Issue title is required' },
+      { success: false, error: 'Issue description is required' },
       { status: 400 }
     );
   }
 
   try {
+    // Generate title if not provided
+    const title = body.title?.trim() || await generateTitle(body.body);
+
     const response = await fetch(
       `https://api.github.com/repos/${ISSUES_OWNER}/${ISSUES_REPO}/issues`,
       {
@@ -127,8 +163,8 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: body.title.trim(),
-          body: body.body?.trim() || '',
+          title: title,
+          body: body.body.trim(),
           labels: body.labels || [],
         }),
       }
