@@ -75,21 +75,21 @@ export default function KubernetesFact() {
   return (
     <div className="mb-6 max-w-2xl mx-auto">
       <div
-        className="p-4 rounded-lg border"
+        className="p-5 rounded-lg border-2"
         style={{
           background: 'var(--md-primary-container)',
           borderColor: 'var(--md-outline-variant)',
         }}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-4">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{
               background: 'var(--md-primary)',
             }}
           >
             <span
-              className="material-symbols-outlined text-lg"
+              className="material-symbols-outlined text-xl"
               style={{ color: 'var(--md-on-primary)' }}
             >
               psychology
@@ -97,14 +97,20 @@ export default function KubernetesFact() {
           </div>
           <div className="flex-1">
             <div
-              className="text-xs font-semibold mb-1"
-              style={{ color: 'var(--md-on-primary-container)' }}
+              className="text-sm font-bold mb-2 tracking-wide uppercase"
+              style={{
+                color: 'var(--md-on-primary-container)',
+                opacity: 0.9
+              }}
             >
               Kubernetes Knowledge
             </div>
             <p
-              className="text-sm leading-relaxed"
-              style={{ color: 'var(--md-on-primary-container)' }}
+              className="text-base leading-relaxed font-medium"
+              style={{
+                color: 'var(--md-on-primary-container)',
+                lineHeight: '1.6'
+              }}
             >
               {fact}
             </p>

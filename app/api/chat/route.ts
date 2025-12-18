@@ -308,14 +308,16 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
                 );
               } else if (block.type === 'tool_use') {
                 toolUseBlocks.push(block);
-                // Stream tool call to client
-                const toolEvent: { type: string; name: string; input?: unknown } = {
+                // Stream tool call to client with parameter summary
+                const toolEvent: { type: string; name: string; input?: unknown; paramSummary?: string } = {
                   type: 'tool',
                   name: block.name,
                 };
                 if (verbose) {
                   toolEvent.input = block.input;
                 }
+                // Add compact parameter summary for better UX
+                toolEvent.paramSummary = summarizeInputForUI(block.input as Record<string, unknown>);
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(toolEvent)}\n\n`));
                 toolCallsHistory.push({ name: block.name, input: block.input });
               } else if (block.type === 'thinking') {
