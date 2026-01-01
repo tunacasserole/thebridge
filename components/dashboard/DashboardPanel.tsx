@@ -16,6 +16,7 @@ export interface DashboardPanelProps {
   isLoading?: boolean;
   badge?: number | string;
   className?: string;
+  headerActions?: ReactNode; // Custom actions to render in header (e.g., Create button)
 }
 
 export default function DashboardPanel({
@@ -32,6 +33,7 @@ export default function DashboardPanel({
   isLoading = false,
   badge,
   className = '',
+  headerActions,
 }: DashboardPanelProps) {
   return (
     <div
@@ -82,6 +84,9 @@ export default function DashboardPanel({
 
         {/* Actions */}
         <div className="flex items-center gap-1">
+          {/* Custom Header Actions (e.g., Create button) */}
+          {headerActions}
+
           {/* Refresh Button */}
           {onRefresh && (
             <button
