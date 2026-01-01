@@ -326,6 +326,12 @@ export default function GitHubIssueButton() {
                   <textarea
                     value={formData.body}
                     onChange={(e) => setFormData({ body: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit(e as unknown as React.FormEvent);
+                      }
+                    }}
                     placeholder="Describe the bug, feature request, or issue. We'll generate a title for you automatically."
                     disabled={isSubmitting}
                     rows={8}
