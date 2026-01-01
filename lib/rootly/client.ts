@@ -8,6 +8,8 @@ import {
   ActiveIncident,
   ActiveAlert,
   RootlyComment,
+  RootlySeverity,
+  RootlyService,
 } from './types';
 
 const ROOTLY_API_URL = 'https://api.rootly.com/v1';
@@ -510,6 +512,81 @@ export async function postIncidentComment(
     'POST',
     payload
   );
+}
+
+// Create a new incident
+export async function createIncident(
+  apiKey: string,
+  title: string,
+  options?: {
+    severity_id?: string;
+    summary?: string;
+    service_ids?: string[];
+    environment_ids?: string[];
+  }
+): Promise<RootlyIncident> {
+  const payload = {
+    data: {
+      type: 'incidents',
+      attributes: {
+        title,
+        ...(options?.severity_id && { severity_id: options.severity_id }),
+        ...(options?.summary && { summary: options.summary }),
+      },
+      relationships: {
+        ...(options?.service_ids && options.service_ids.length > 0 && {
+          services: {
+            data: options.service_ids.map(id => ({ type: 'services', id })),
+          },
+        }),
+        ...(options?.environment_ids && options.environment_ids.length > 0 && {
+          environments: {
+            data: options.environment_ids.map(id => ({ type: 'environments', id })),
+          },
+        }),
+      },
+    },
+  };
+
+  const response = await rootlyFetch<{ data: RootlyIncident }>(
+    '/incidents',
+    apiKey,
+    undefined,
+    'POST',
+    payload
+  );
+
+  return response.data;
+}
+
+// Fetch available severities
+export async function fetchSeverities(apiKey: string): Promise<RootlySeverity[]> {
+  const response = await rootlyFetch<RootlyListResponse<RootlySeverity>>(
+    '/severities',
+    apiKey,
+    { 'page[size]': '50' }
+  );
+  return response.data;
+}
+
+// Fetch available services
+export async function fetchServices(apiKey: string): Promise<RootlyService[]> {
+  const response = await rootlyFetch<RootlyListResponse<RootlyService>>(
+    '/services',
+    apiKey,
+    { 'page[size]': '100' }
+  );
+  return response.data;
+}
+
+// Fetch available environments
+export async function fetchEnvironments(apiKey: string): Promise<Array<{ id: string; attributes: { name: string; slug: string } }>> {
+  const response = await rootlyFetch<RootlyListResponse<{ id: string; type: 'environments'; attributes: { name: string; slug: string } }>>(
+    '/environments',
+    apiKey,
+    { 'page[size]': '50' }
+  );
+  return response.data;
 }
 
 // Get direct incident URL

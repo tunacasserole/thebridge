@@ -222,6 +222,19 @@ export interface RootlyDashboardData {
   };
 }
 
+// Create Incident Types
+export interface CreateIncidentRequest {
+  title: string;
+  severity_id?: string;
+  summary?: string;
+  service_ids?: string[];
+  environment_ids?: string[];
+}
+
+export interface CreateIncidentResponse {
+  data: RootlyIncident;
+}
+
 // API Response wrappers
 export interface RootlyListResponse<T> {
   data: T[];
