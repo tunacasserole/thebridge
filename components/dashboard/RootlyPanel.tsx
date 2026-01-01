@@ -453,16 +453,33 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
         <div className="flex-1 flex flex-col min-h-0">
           {/* Filter Row with View Mode Toggle */}
           <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
-            {/* MD3 Segmented Button - View Mode Toggle */}
-            <div
-              className="inline-flex rounded-lg overflow-hidden shrink-0"
-              style={{
-                border: '1px solid var(--md-outline-variant)',
-                background: 'var(--md-surface-container-highest)',
-              }}
-              role="group"
-              aria-label="View mode"
-            >
+            <div className="flex items-center gap-2">
+              {/* Create Button (shown when embedded in Dashboard) */}
+              {embedded && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:shadow-md flex items-center gap-1"
+                  style={{
+                    background: '#7748F6',
+                    color: '#ffffff',
+                  }}
+                  aria-label="Create new incident"
+                >
+                  <Icon name="add" size={14} decorative />
+                  <span>Create</span>
+                </button>
+              )}
+
+              {/* MD3 Segmented Button - View Mode Toggle */}
+              <div
+                className="inline-flex rounded-lg overflow-hidden shrink-0"
+                style={{
+                  border: '1px solid var(--md-outline-variant)',
+                  background: 'var(--md-surface-container-highest)',
+                }}
+                role="group"
+                aria-label="View mode"
+              >
               <button
                 onClick={() => {
                   setViewMode('incidents');
@@ -494,6 +511,7 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
                 <Icon name="notifications_active" size={12} decorative />
                 <span>{alertsCount}</span>
               </button>
+              </div>
             </div>
 
             {/* Filter Chips - Only for Incidents (right-justified) */}
