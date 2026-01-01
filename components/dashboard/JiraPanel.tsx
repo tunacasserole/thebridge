@@ -12,6 +12,7 @@ const ALL_EPICS = '__ALL_EPICS__'; // Special value for showing all stories
 const STORAGE_KEY = 'thebridge-selected-epic';
 
 type FilterMode = 'todo' | 'backlog' | 'codereview' | 'inprogress' | 'done';
+type StatusCategoryFilter = 'all' | 'hide-done' | 'inprogress-only' | 'done-only';
 
 interface JiraPanelProps {
   compact?: boolean;
@@ -21,8 +22,10 @@ interface JiraPanelProps {
 
 export default function JiraPanel({ compact = false, refreshTrigger, embedded = false }: JiraPanelProps) {
   const [filterMode, setFilterMode] = useState<FilterMode>('todo');
+  const [statusCategoryFilter, setStatusCategoryFilter] = useState<StatusCategoryFilter>('hide-done');
   const [selectedEpic, setSelectedEpic] = useState<string | null>(null);
   const [showEpicDropdown, setShowEpicDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
   const [transitions, setTransitions] = useState<Record<string, { id: string; name: string }[]>>({});
@@ -36,16 +39,19 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
       if (showEpicDropdown && !target.closest('[data-epic-selector]')) {
         setShowEpicDropdown(false);
       }
+      if (showStatusDropdown && !target.closest('[data-status-selector]')) {
+        setShowStatusDropdown(false);
+      }
       if (statusDropdown && !target.closest('.status-dropdown-container')) {
         setStatusDropdown(null);
       }
     };
 
-    if (showEpicDropdown || statusDropdown) {
+    if (showEpicDropdown || showStatusDropdown || statusDropdown) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showEpicDropdown, statusDropdown]);
+  }, [showEpicDropdown, showStatusDropdown, statusDropdown]);
 
   // Load selected epic from localStorage
   useEffect(() => {
@@ -184,6 +190,16 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
         );
       }
 
+      // Apply status category filter
+      if (statusCategoryFilter === 'hide-done') {
+        filtered = filtered.filter(t => t.statusCategory !== 'done');
+      } else if (statusCategoryFilter === 'inprogress-only') {
+        filtered = filtered.filter(t => t.statusCategory === 'inprogress');
+      } else if (statusCategoryFilter === 'done-only') {
+        filtered = filtered.filter(t => t.statusCategory === 'done');
+      }
+      // 'all' means no status category filtering
+
       // Apply status filters by actual Jira status
       if (filterMode === 'todo') {
         filtered = filtered.filter(t => t.status.toLowerCase() === 'to do');
@@ -206,32 +222,44 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
       tasks: filterByMode(data.tasks),
       bugs: filterByMode(data.bugs),
     };
-  }, [data, filterMode, selectedEpic]);
+  }, [data, filterMode, selectedEpic, statusCategoryFilter]);
 
-  // Get epic-filtered items for counting
+  // Get epic-filtered and status-category-filtered items for counting
   const epicFilteredItems = useMemo(() => {
     if (!data) return [];
 
-    if (!selectedEpic || selectedEpic === ALL_EPICS) {
-      return [...data.stories, ...data.tasks, ...data.bugs];
+    let items = [...data.stories, ...data.tasks, ...data.bugs];
+
+    // Apply epic filter
+    if (selectedEpic && selectedEpic !== ALL_EPICS) {
+      const getEpicChildKeys = (epicKey: string): Set<string> => {
+        const childKeys = new Set<string>();
+        childKeys.add(epicKey);
+        items.forEach(item => {
+          if (item.parentKey === epicKey) {
+            childKeys.add(item.key);
+          }
+        });
+        return childKeys;
+      };
+
+      const epicChildKeys = getEpicChildKeys(selectedEpic);
+      items = items.filter(t =>
+        t.parentKey === selectedEpic || (t.parentKey && epicChildKeys.has(t.parentKey))
+      );
     }
 
-    const getEpicChildKeys = (epicKey: string): Set<string> => {
-      const childKeys = new Set<string>();
-      childKeys.add(epicKey);
-      [...data.stories, ...data.tasks, ...data.bugs].forEach(item => {
-        if (item.parentKey === epicKey) {
-          childKeys.add(item.key);
-        }
-      });
-      return childKeys;
-    };
+    // Apply status category filter
+    if (statusCategoryFilter === 'hide-done') {
+      items = items.filter(t => t.statusCategory !== 'done');
+    } else if (statusCategoryFilter === 'inprogress-only') {
+      items = items.filter(t => t.statusCategory === 'inprogress');
+    } else if (statusCategoryFilter === 'done-only') {
+      items = items.filter(t => t.statusCategory === 'done');
+    }
 
-    const epicChildKeys = getEpicChildKeys(selectedEpic);
-    return [...data.stories, ...data.tasks, ...data.bugs].filter(t =>
-      t.parentKey === selectedEpic || (t.parentKey && epicChildKeys.has(t.parentKey))
-    );
-  }, [data, selectedEpic]);
+    return items;
+  }, [data, selectedEpic, statusCategoryFilter]);
 
   const getStatusColor = (statusCategory: 'todo' | 'inprogress' | 'done') => {
     switch (statusCategory) {
@@ -567,6 +595,88 @@ export default function JiraPanel({ compact = false, refreshTrigger, embedded = 
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Status Category Filter */}
+      <div className="mb-4 shrink-0" data-status-selector>
+        <div className="relative">
+          <button
+            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:shadow-md"
+            style={{
+              background: 'var(--md-surface-container-high)',
+              border: '1px solid var(--md-outline-variant)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <Icon
+                name="filter_list"
+                size={20}
+                color="var(--md-primary)"
+                decorative
+              />
+              <span className="font-medium" style={{ color: 'var(--md-on-surface)' }}>
+                {statusCategoryFilter === 'all' && 'All Statuses'}
+                {statusCategoryFilter === 'hide-done' && 'Hide Done'}
+                {statusCategoryFilter === 'inprogress-only' && 'In Progress Only'}
+                {statusCategoryFilter === 'done-only' && 'Done Only'}
+              </span>
+            </div>
+            <Icon
+              name={showStatusDropdown ? 'expand_less' : 'expand_more'}
+              size={20}
+              color="var(--md-on-surface-variant)"
+              decorative
+            />
+          </button>
+
+          {/* Dropdown Menu */}
+          {showStatusDropdown && (
+            <div
+              className="absolute z-10 w-full mt-2 rounded-xl shadow-lg overflow-hidden"
+              style={{
+                background: 'var(--md-surface-container-high)',
+                border: '1px solid var(--md-outline-variant)',
+              }}
+            >
+              <div className="p-2">
+                {[
+                  { value: 'all' as StatusCategoryFilter, label: 'All Statuses', icon: 'visibility' },
+                  { value: 'hide-done' as StatusCategoryFilter, label: 'Hide Done', icon: 'visibility_off' },
+                  { value: 'inprogress-only' as StatusCategoryFilter, label: 'In Progress Only', icon: 'sync' },
+                  { value: 'done-only' as StatusCategoryFilter, label: 'Done Only', icon: 'check_circle' },
+                ].map(option => (
+                  <div
+                    key={option.value}
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg hover:bg-opacity-10 hover:bg-bridge-text-primary cursor-pointer"
+                    onClick={() => {
+                      setStatusCategoryFilter(option.value);
+                      setShowStatusDropdown(false);
+                    }}
+                    style={{
+                      background: statusCategoryFilter === option.value ? 'var(--md-primary-container)' : 'transparent',
+                    }}
+                  >
+                    <Icon
+                      name={option.icon}
+                      size={20}
+                      color={statusCategoryFilter === option.value ? 'var(--md-on-primary-container)' : 'var(--md-primary)'}
+                      decorative
+                    />
+                    <span
+                      className="font-semibold"
+                      style={{
+                        color: statusCategoryFilter === option.value ? 'var(--md-on-primary-container)' : 'var(--md-on-surface)',
+                      }}
+                    >
+                      {option.label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
