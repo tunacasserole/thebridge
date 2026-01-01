@@ -25,6 +25,13 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    title: '',
+    summary: '',
+    severity_id: '',
+  });
+  const [creatingIncident, setCreatingIncident] = useState(false);
   const { data, loading, error, refetch } = useRootlyData(REFRESH_INTERVAL, refreshTrigger);
 
   // Filter incidents and alerts based on mode
@@ -80,6 +87,40 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
     if (urgency === 'high') return { color: '#f97316', icon: 'arrow_upward' };
     if (urgency === 'medium') return { color: '#eab308', icon: 'drag_handle' };
     return { color: '#3b82f6', icon: 'arrow_downward' };
+  };
+
+  // Handle creating a new incident
+  const handleCreateIncident = async () => {
+    if (!createFormData.title.trim()) {
+      alert('Please enter an incident title');
+      return;
+    }
+
+    setCreatingIncident(true);
+    try {
+      const response = await fetch('/api/rootly/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createFormData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Reset form and close modal
+        setCreateFormData({ title: '', summary: '', severity_id: '' });
+        setShowCreateModal(false);
+        // Refresh data to show new incident
+        await refetch();
+      } else {
+        alert(`Failed to create incident: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to create incident:', error);
+      alert('Failed to create incident. Please try again.');
+    } finally {
+      setCreatingIncident(false);
+    }
   };
 
   // Handle status update
@@ -370,23 +411,40 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
             </div>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              refetch();
-            }}
-            disabled={loading}
-            className="p-2 rounded-full transition-all hover:bg-opacity-10 hover:bg-bridge-text-primary disabled:opacity-50"
-            aria-label="Refresh Rootly data"
-          >
-            <Icon
-              name="refresh"
-              size={20}
-              className={loading ? 'animate-spin' : ''}
-              color="var(--md-on-surface-variant)"
-              decorative
-            />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCreateModal(true);
+              }}
+              className="px-3 py-1.5 rounded-full text-sm font-medium transition-all hover:shadow-md flex items-center gap-1.5"
+              style={{
+                background: '#7748F6',
+                color: '#ffffff',
+              }}
+              aria-label="Create new incident"
+            >
+              <Icon name="add" size={18} decorative />
+              <span>Create</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                refetch();
+              }}
+              disabled={loading}
+              className="p-2 rounded-full transition-all hover:bg-opacity-10 hover:bg-bridge-text-primary disabled:opacity-50"
+              aria-label="Refresh Rootly data"
+            >
+              <Icon
+                name="refresh"
+                size={20}
+                className={loading ? 'animate-spin' : ''}
+                color="var(--md-on-surface-variant)"
+                decorative
+              />
+            </button>
+          </div>
         </div>
       )}
 
@@ -751,6 +809,117 @@ export default function RootlyPanel({ compact = false, defaultExpanded = true, r
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Create Incident Modal */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => !creatingIncident && setShowCreateModal(false)}
+        >
+          <div
+            className="rounded-2xl p-6 max-w-md w-full"
+            style={{
+              background: 'var(--md-surface-container)',
+              border: '1px solid var(--md-outline-variant)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold" style={{ color: 'var(--md-on-surface)' }}>
+                Create New Incident
+              </h3>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                disabled={creatingIncident}
+                className="p-1 rounded-full transition-all hover:bg-opacity-10 hover:bg-bridge-text-primary disabled:opacity-50"
+                aria-label="Close modal"
+              >
+                <Icon name="close" size={24} color="var(--md-on-surface-variant)" decorative />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Title Field */}
+              <div>
+                <label
+                  htmlFor="incident-title"
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: 'var(--md-on-surface)' }}
+                >
+                  Title *
+                </label>
+                <input
+                  id="incident-title"
+                  type="text"
+                  value={createFormData.title}
+                  onChange={(e) => setCreateFormData({ ...createFormData, title: e.target.value })}
+                  disabled={creatingIncident}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  style={{
+                    background: 'var(--md-surface-container-high)',
+                    border: '1px solid var(--md-outline-variant)',
+                    color: 'var(--md-on-surface)',
+                  }}
+                  placeholder="Brief description of the incident"
+                  required
+                />
+              </div>
+
+              {/* Summary Field */}
+              <div>
+                <label
+                  htmlFor="incident-summary"
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: 'var(--md-on-surface)' }}
+                >
+                  Summary
+                </label>
+                <textarea
+                  id="incident-summary"
+                  value={createFormData.summary}
+                  onChange={(e) => setCreateFormData({ ...createFormData, summary: e.target.value })}
+                  disabled={creatingIncident}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-all disabled:opacity-50 resize-none"
+                  style={{
+                    background: 'var(--md-surface-container-high)',
+                    border: '1px solid var(--md-outline-variant)',
+                    color: 'var(--md-on-surface)',
+                  }}
+                  placeholder="Additional details about the incident"
+                  rows={3}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  disabled={creatingIncident}
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-opacity-10 hover:bg-bridge-text-primary disabled:opacity-50"
+                  style={{ color: 'var(--md-on-surface)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateIncident}
+                  disabled={creatingIncident || !createFormData.title.trim()}
+                  className="px-4 py-2 rounded-full text-sm font-medium transition-all hover:shadow-md disabled:opacity-50 flex items-center gap-2"
+                  style={{
+                    background: '#7748F6',
+                    color: '#ffffff',
+                  }}
+                >
+                  {creatingIncident && (
+                    <Icon name="sync" size={16} className="animate-spin" decorative />
+                  )}
+                  {creatingIncident ? 'Creating...' : 'Create Incident'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
