@@ -24,14 +24,23 @@ export const ROLE_DEFINITIONS: Record<UserRole, RoleDefinition> = {
     color: '#10b981', // Green
     shortName: 'SRE',
   },
-  pm: {
-    id: 'pm',
-    name: 'Product Manager',
+  fullstack: {
+    id: 'fullstack',
+    name: 'Full Stack Developer',
     description:
-      'Define product roadmap, prioritize features, and align stakeholders',
-    icon: 'Assignment', // Material UI icon (clipboard/task)
-    color: '#8b5cf6', // Purple
-    shortName: 'PM',
+      'Build end-to-end features, debug issues, and ship quality code',
+    icon: 'Code', // Material UI icon
+    color: '#3b82f6', // Blue
+    shortName: 'FS',
+  },
+  datascientist: {
+    id: 'datascientist',
+    name: 'Data Scientist',
+    description:
+      'Analyze data, build models, and derive insights from complex datasets',
+    icon: 'Analytics', // Material UI icon
+    color: '#f59e0b', // Amber
+    shortName: 'DS',
   },
 };
 
@@ -49,15 +58,25 @@ export const ROLE_TERMINOLOGY: Record<UserRole, TerminologyMap> = {
     knowledgeBaseLabel: 'SRE Wisdom',
     playbookLabel: 'Runbooks',
   },
-  pm: {
-    homeLabel: 'Product Hub',
-    homeSublabel: 'Roadmap and feature planning',
-    agentFloorLabel: 'Product Agents',
-    agentDeployAction: 'Launch Agent',
-    systemsLabel: 'Products',
-    healthLabel: 'Feature Status',
-    knowledgeBaseLabel: 'Product Docs',
-    playbookLabel: 'Playbooks',
+  fullstack: {
+    homeLabel: 'Developer Hub',
+    homeSublabel: 'Code, build, and ship',
+    agentFloorLabel: 'Dev Agents',
+    agentDeployAction: 'Spawn Agent',
+    systemsLabel: 'Services',
+    healthLabel: 'Build Status',
+    knowledgeBaseLabel: 'Dev Docs',
+    playbookLabel: 'Recipes',
+  },
+  datascientist: {
+    homeLabel: 'Data Lab',
+    homeSublabel: 'Analysis and insights',
+    agentFloorLabel: 'Data Agents',
+    agentDeployAction: 'Run Agent',
+    systemsLabel: 'Datasets',
+    healthLabel: 'Pipeline Status',
+    knowledgeBaseLabel: 'Data Docs',
+    playbookLabel: 'Notebooks',
   },
 };
 
@@ -108,34 +127,64 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     terminology: ROLE_TERMINOLOGY.sre,
   },
 
-  pm: {
-    role: 'pm',
+  fullstack: {
+    role: 'fullstack',
     showHomeDashboard: true,
     showAgentFloor: true,
-    showBuilderWorkspace: false,
-    visibleIntegrations: ['confluence', 'slack', 'github'],
+    showBuilderWorkspace: true,
+    visibleIntegrations: ['github', 'slack', 'confluence', 'newrelic'],
     defaultAgents: [
-      'roadmap-planner',
-      'feature-prioritizer',
-      'stakeholder-communicator',
+      'code-reviewer',
+      'bug-investigator',
+      'test-generator',
       'confluence-writer',
       'slack-notifier',
     ],
     recommendedAgents: [
-      'requirements-analyzer',
-      'user-feedback-summarizer',
-      'release-coordinator',
-      'metrics-reporter',
+      'refactoring-assistant',
+      'api-designer',
+      'performance-optimizer',
+      'documentation-generator',
     ],
     knowledgeBaseCategories: [
-      'product-strategy',
-      'roadmapping',
-      'user-research',
-      'stakeholder-management',
-      'release-planning',
+      'architecture',
+      'best-practices',
+      'debugging',
+      'testing',
+      'deployment',
     ],
-    playbookTypes: ['planning', 'communication', 'analysis'],
-    terminology: ROLE_TERMINOLOGY.pm,
+    playbookTypes: ['development', 'debugging', 'deployment'],
+    terminology: ROLE_TERMINOLOGY.fullstack,
+  },
+
+  datascientist: {
+    role: 'datascientist',
+    showHomeDashboard: true,
+    showAgentFloor: true,
+    showBuilderWorkspace: true,
+    visibleIntegrations: ['github', 'slack', 'confluence', 'newrelic'],
+    defaultAgents: [
+      'data-explorer',
+      'model-trainer',
+      'insight-generator',
+      'confluence-writer',
+      'slack-notifier',
+    ],
+    recommendedAgents: [
+      'feature-engineer',
+      'visualization-builder',
+      'experiment-tracker',
+      'pipeline-optimizer',
+    ],
+    knowledgeBaseCategories: [
+      'data-analysis',
+      'machine-learning',
+      'statistics',
+      'visualization',
+      'pipelines',
+    ],
+    playbookTypes: ['analysis', 'modeling', 'experimentation'],
+    terminology: ROLE_TERMINOLOGY.datascientist,
   },
 };
 

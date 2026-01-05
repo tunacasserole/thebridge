@@ -8,7 +8,7 @@
 /**
  * Available user roles in TheBridge
  */
-export type UserRole = 'sre' | 'pm';
+export type UserRole = 'sre' | 'fullstack' | 'datascientist';
 
 /**
  * Role metadata and configuration
