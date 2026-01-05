@@ -17,11 +17,13 @@ function getDefaultPreferences(): UserRolePreferences {
     currentRole: DEFAULT_ROLE,
     favoriteAgents: {
       sre: [],
-      pm: [],
+      fullstack: [],
+      datascientist: [],
     },
     recentAgents: {
       sre: [],
-      pm: [],
+      fullstack: [],
+      datascientist: [],
     },
     roleViewPreferences: {
       sre: {
@@ -29,7 +31,12 @@ function getDefaultPreferences(): UserRolePreferences {
         agentFloorLayout: 'cards',
         agentFloorSortBy: 'category',
       },
-      pm: {
+      fullstack: {
+        dashboardLayout: 'detailed',
+        agentFloorLayout: 'cards',
+        agentFloorSortBy: 'category',
+      },
+      datascientist: {
         dashboardLayout: 'detailed',
         agentFloorLayout: 'cards',
         agentFloorSortBy: 'category',
@@ -37,7 +44,8 @@ function getDefaultPreferences(): UserRolePreferences {
     },
     roleThemes: {
       sre: 'sre-emerald', // Default emerald theme for SRE
-      pm: 'pm-violet', // Default violet theme for PM
+      fullstack: 'default-blue', // Default blue theme for Full Stack
+      datascientist: 'default-amber', // Default amber theme for Data Scientist
     },
     lastUpdated: new Date().toISOString(),
   };

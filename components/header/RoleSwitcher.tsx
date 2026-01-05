@@ -22,7 +22,8 @@ interface RoleSwitcherProps {
 // Simple emoji icons matching RoleBadge
 const ROLE_ICONS: Record<UserRole, string> = {
   sre: '⚡', // Speed/Lightning
-  pm: '📋', // Clipboard/Planning
+  fullstack: '💻', // Code/Development
+  datascientist: '📊', // Data/Analytics
 };
 
 const sizeStyles = {
