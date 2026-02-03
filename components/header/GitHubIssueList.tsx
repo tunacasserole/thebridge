@@ -17,6 +17,7 @@ interface GitHubIssue {
 }
 
 interface GitHubIssueListProps {
+  isOpen?: boolean;
   onRefresh?: () => void;
 }
 

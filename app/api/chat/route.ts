@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
 import { loadMCPTools, executeMCPTool, closeMCPConnections, getAllUserMCPCategories } from '@/lib/mcp/client';
+import { getUserIntegrationContext, buildContextPrompt } from '@/lib/prompts/userContext';
 import { getAuthenticatedUser, getUserApiKey } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
@@ -211,6 +212,10 @@ export async function POST(request: NextRequest) {
       extendedThinking,
     });
 
+    // Get user's integration context (New Relic account, entity, etc.)
+    const userContext = user?.id ? await getUserIntegrationContext(user.id) : {};
+    const userContextPrompt = buildContextPrompt(userContext);
+
     // Get template instruction to add to system prompt
     const templateInstruction = getTemplateInstruction(message);
     const enhancedSystemPrompt = `${SYSTEM_PROMPT}
@@ -218,7 +223,7 @@ export async function POST(request: NextRequest) {
 Response Guidelines:
 ${templateInstruction}
 
-Be concise and direct. Avoid unnecessary preambles or verbose explanations.`;
+Be concise and direct. Avoid unnecessary preambles or verbose explanations.${userContextPrompt}`;
 
     // Log AI request with formatted output
     logAIRequest({

@@ -77,7 +77,7 @@ export default function JiraIssueList({ isOpen }: JiraIssueListProps) {
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <Icon name="error" size={20} style={{ color: colors.error }} decorative />
         <p style={{ fontSize: '12px', color: colors.error, marginTop: '8px' }}>
-          {error instanceof Error ? error.message : 'Failed to load Jira items'}
+          {error || 'Failed to load Jira items'}
         </p>
         <button
           onClick={refetch}
