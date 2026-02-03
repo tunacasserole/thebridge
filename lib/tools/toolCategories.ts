@@ -236,6 +236,8 @@ export const SERVER_CATEGORIES: Record<string, ToolCategory[]> = {
     ToolCategory.METRICS,
     ToolCategory.TRACES,
     ToolCategory.ALERTS,
+    ToolCategory.LOGS,       // New Relic has error logs and transaction errors
+    ToolCategory.INCIDENT,   // Error tracking relates to incidents
   ],
   rootly: [
     ToolCategory.INCIDENT,

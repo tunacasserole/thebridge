@@ -9,7 +9,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
 import { SYSTEM_PROMPT } from '@/lib/prompts';
-import { loadMCPTools, executeMCPTool, closeMCPConnections } from '@/lib/mcp/client';
+import { loadMCPTools, executeMCPTool, closeMCPConnections, getAllUserMCPCategories } from '@/lib/mcp/client';
 import { getAuthenticatedUser, getUserApiKey } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
@@ -185,6 +185,9 @@ export async function POST(request: NextRequest) {
     // enabledTools is an array of MCP server IDs like ['coralogix', 'newrelic', 'github']
     const { tools: allTools, serverNames, failedServers } = await loadMCPTools(enabledTools);
 
+    // Get user's category preferences for tool filtering (e.g., New Relic categories)
+    const serverCategories = user?.id ? await getAllUserMCPCategories(user.id) : {};
+
     // Apply dynamic tool filtering to reduce token usage
     const loadingStrategy = getDefaultLoadingStrategy(message);
     const { tools, metadata: filterMetadata } = await filterTools(
@@ -194,6 +197,7 @@ export async function POST(request: NextRequest) {
         ...loadingStrategy,
         query: message,
         userId: user?.id,
+        serverCategories,
       }
     );
 

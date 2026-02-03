@@ -18,6 +18,10 @@ import {
   SERVER_CATEGORIES,
 } from './toolCategories';
 import { getToolUsageStats } from './analytics';
+import {
+  NEW_RELIC_CATEGORIES,
+  getToolPatternsForCategories,
+} from '@/components/mcp/NewRelicCategorySelector';
 
 export interface ToolMetadata {
   name: string;
@@ -68,6 +72,12 @@ export interface LoaderOptions {
    * Force include specific tool names (bypass filtering)
    */
   forceInclude?: string[];
+
+  /**
+   * User-selected categories by server slug
+   * e.g., { 'newrelic': ['errors', 'incidents', 'apm'] }
+   */
+  serverCategories?: Record<string, string[]>;
 }
 
 export interface FilterResult {
@@ -197,18 +207,57 @@ export async function filterTools(
     const relevantCategories = detectCategoriesFromQuery(options.query);
 
     if (relevantCategories.length > 0) {
-      filtered = filtered.filter(({ metadata }) =>
+      const categoryFiltered = filtered.filter(({ metadata }) =>
         metadata.categories.some(cat => relevantCategories.includes(cat))
       );
+      // Only apply category filter if it doesn't remove ALL tools
+      if (categoryFiltered.length > 0) {
+        filtered = categoryFiltered;
+      }
     }
   }
 
-  // Apply minimum usage threshold
-  if (options.minUsageThreshold !== undefined && !options.includeRareTools) {
+  // Apply user-selected server categories (e.g., New Relic category filtering)
+  if (options.serverCategories && Object.keys(options.serverCategories).length > 0) {
+    filtered = filtered.filter(({ tool, metadata }) => {
+      const serverSlug = metadata.serverName;
+      const userCategories = options.serverCategories?.[serverSlug];
+
+      // If no categories specified for this server, include all tools
+      if (!userCategories || userCategories.length === 0) {
+        return true;
+      }
+
+      // For New Relic, filter by user-selected categories
+      if (serverSlug === 'newrelic') {
+        const allowedToolPatterns = getToolPatternsForCategories(userCategories);
+        // Extract the actual tool name (after serverName__)
+        const actualToolName = tool.name.split('__').slice(1).join('__');
+
+        // Check if this tool matches any of the allowed patterns
+        return allowedToolPatterns.some(pattern =>
+          actualToolName.toLowerCase().includes(pattern.toLowerCase()) ||
+          pattern.toLowerCase().includes(actualToolName.toLowerCase())
+        );
+      }
+
+      // For other servers, include all tools
+      return true;
+    });
+
+    console.log(`[Tool Filter] After server category filtering: ${filtered.length} tools`);
+  }
+
+  // Apply minimum usage threshold only if includeRareTools is false
+  if (options.minUsageThreshold !== undefined && options.minUsageThreshold > 0 && !options.includeRareTools) {
     const threshold = options.minUsageThreshold;
-    filtered = filtered.filter(
+    const usageFiltered = filtered.filter(
       ({ metadata }) => (metadata.usageCount || 0) >= threshold
     );
+    // Only apply usage filter if it doesn't remove ALL tools
+    if (usageFiltered.length > 0) {
+      filtered = usageFiltered;
+    }
   }
 
   // Score and sort by relevance
@@ -344,9 +393,9 @@ export function getDefaultLoadingStrategy(
 
   const baseOptions: LoaderOptions = {
     query,
-    includeRareTools: false,
-    minUsageThreshold: 1,
-    maxTools: 40, // Default limit to reduce tokens
+    includeRareTools: true,  // Include tools without usage history
+    minUsageThreshold: 0,    // Don't require prior usage
+    maxTools: 50,            // Reasonable limit to manage tokens
   };
 
   // Apply agent-specific strategy if available
