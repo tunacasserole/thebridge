@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import NewRelicCategorySelector from './NewRelicCategorySelector';
 
 interface MCPServer {
   id: string;
@@ -39,6 +40,13 @@ export default function MCPConfigForm({
   const [config, setConfig] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  // Category selection for servers that support it (like New Relic)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    (initialConfig.categories as string[]) || []
+  );
+
+  // Check if this server supports category selection
+  const supportsCategorySelection = server.slug === 'newrelic';
 
   // Initialize config from template and initial values
   useEffect(() => {
@@ -136,6 +144,12 @@ export default function MCPConfigForm({
       return;
     }
 
+    // Validate categories for servers that require them
+    if (supportsCategorySelection && selectedCategories.length === 0) {
+      setErrors(prev => ({ ...prev, categories: 'Select at least one category' }));
+      return;
+    }
+
     try {
       // Build config object
       const configData: Record<string, unknown> = {};
@@ -166,6 +180,11 @@ export default function MCPConfigForm({
           }
         });
         configData.headers = headers;
+      }
+
+      // Add categories for servers that support them
+      if (supportsCategorySelection && selectedCategories.length > 0) {
+        configData.categories = selectedCategories;
       }
 
       await onSave(configData);
@@ -271,6 +290,17 @@ export default function MCPConfigForm({
           );
         })}
       </div>
+
+      {/* Category Selection for supported servers */}
+      {supportsCategorySelection && (
+        <div className="pt-2 border-t border-[var(--md-outline-variant)]">
+          <NewRelicCategorySelector
+            selectedCategories={selectedCategories}
+            onChange={setSelectedCategories}
+            disabled={isSaving}
+          />
+        </div>
+      )}
 
       {/* Help text */}
       {server.docsUrl && (

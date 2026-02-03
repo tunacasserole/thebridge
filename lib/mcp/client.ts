@@ -545,3 +545,62 @@ export async function getUserAvailableMCPServers(userId: string): Promise<string
     return getAvailableMCPServers(); // Fall back to file config
   }
 }
+
+/**
+ * Get user's category preferences for a specific MCP server
+ * Returns the categories array from the user's config, or null if not configured
+ */
+export async function getUserMCPCategories(
+  userId: string,
+  serverSlug: string
+): Promise<string[] | null> {
+  try {
+    const config = await prisma.userMCPConfig.findFirst({
+      where: {
+        userId,
+        isEnabled: true,
+        server: { slug: serverSlug },
+      },
+      include: { server: { select: { slug: true } } },
+    });
+
+    if (!config) {
+      return null;
+    }
+
+    const parsedConfig = JSON.parse(config.config);
+    return parsedConfig.categories || null;
+  } catch (error) {
+    console.error(`[MCP] Failed to get user categories for ${serverSlug}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get all user's category preferences by server slug
+ * Returns a map of server slug -> categories array
+ */
+export async function getAllUserMCPCategories(
+  userId: string
+): Promise<Record<string, string[]>> {
+  try {
+    const configs = await prisma.userMCPConfig.findMany({
+      where: { userId, isEnabled: true },
+      include: { server: { select: { slug: true } } },
+    });
+
+    const categoriesMap: Record<string, string[]> = {};
+
+    for (const config of configs) {
+      const parsedConfig = JSON.parse(config.config);
+      if (parsedConfig.categories && Array.isArray(parsedConfig.categories)) {
+        categoriesMap[config.server.slug] = parsedConfig.categories;
+      }
+    }
+
+    return categoriesMap;
+  } catch (error) {
+    console.error('[MCP] Failed to get user MCP categories:', error);
+    return {};
+  }
+}
