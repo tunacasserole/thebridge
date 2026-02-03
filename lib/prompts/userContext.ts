@@ -138,6 +138,18 @@ export function buildContextPrompt(context: UserIntegrationContext): string {
       lines.push(`  - Focus your New Relic queries on these areas unless the user asks otherwise`);
     }
 
+    // Add announcement requirement
+    lines.push('');
+    lines.push('**IMPORTANT - Before calling any New Relic MCP tool:**');
+    lines.push('You MUST first announce to the user what you are about to do. Include:');
+    lines.push('1. The Account ID you will use');
+    lines.push('2. The Entity name (if applicable)');
+    lines.push('3. The specific tool(s) you will call');
+    lines.push('4. If running an NRQL query, show the query');
+    lines.push('');
+    lines.push('Example announcement:');
+    lines.push('> "I\'m about to query New Relic using account **' + (nr.accountName || nr.accountId || 'your account') + '** (ID: ' + (nr.accountId || 'N/A') + ')' + (nr.entityName ? ` for entity **${nr.entityName}**` : '') + '. I\'ll use the `execute_nrql_query` tool with the following NRQL: `SELECT count(*) FROM Transaction`"');
+
     if (lines.length > 1) {
       sections.push(lines.join('\n'));
     }
