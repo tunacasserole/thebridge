@@ -318,7 +318,20 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.${use
               } else if (block.type === 'tool_use') {
                 toolUseBlocks.push(block);
                 // Stream tool call to client with parameter summary
-                const toolEvent: { type: string; name: string; input?: unknown; paramSummary?: string } = {
+                const toolEvent: {
+                  type: string;
+                  name: string;
+                  input?: unknown;
+                  paramSummary?: string;
+                  newRelicDetails?: {
+                    type: 'mcp';
+                    accountId?: number | string;
+                    entityGuid?: string;
+                    entityName?: string;
+                    nrqlQuery?: string;
+                    category?: string;
+                  };
+                } = {
                   type: 'tool',
                   name: block.name,
                 };
@@ -327,6 +340,55 @@ Be concise and direct. Avoid unnecessary preambles or verbose explanations.${use
                 }
                 // Add compact parameter summary for better UX
                 toolEvent.paramSummary = summarizeInputForUI(block.input as Record<string, unknown>);
+
+                // Add New Relic-specific details for newrelic tools
+                if (block.name.startsWith('newrelic__')) {
+                  const inputObj = block.input as Record<string, unknown>;
+                  const newRelicDetails: typeof toolEvent.newRelicDetails = {
+                    type: 'mcp',
+                  };
+
+                  // Extract account_id from input
+                  if (inputObj?.account_id) {
+                    newRelicDetails.accountId = inputObj.account_id as number | string;
+                  }
+
+                  // Extract entity GUID from input
+                  if (inputObj?.entity_guid) {
+                    newRelicDetails.entityGuid = inputObj.entity_guid as string;
+                  } else if (inputObj?.guid) {
+                    newRelicDetails.entityGuid = inputObj.guid as string;
+                  }
+
+                  // Extract NRQL query from input
+                  if (inputObj?.nrql || inputObj?.query) {
+                    newRelicDetails.nrqlQuery = (inputObj.nrql || inputObj.query) as string;
+                  }
+
+                  // Detect category from tool name
+                  const toolName = block.name.replace('newrelic__', '');
+                  if (toolName.includes('error') || toolName.includes('issue')) {
+                    newRelicDetails.category = 'errors';
+                  } else if (toolName.includes('alert') || toolName.includes('incident')) {
+                    newRelicDetails.category = 'incidents';
+                  } else if (toolName.includes('apm') || toolName.includes('transaction')) {
+                    newRelicDetails.category = 'apm';
+                  } else if (toolName.includes('entity') || toolName.includes('service')) {
+                    newRelicDetails.category = 'entities';
+                  } else if (toolName.includes('log')) {
+                    newRelicDetails.category = 'logs';
+                  } else if (toolName.includes('nrql') || toolName.includes('query')) {
+                    newRelicDetails.category = 'nrql';
+                  }
+
+                  // Add user context entity name if available
+                  if (userContext.newrelic?.entityName && newRelicDetails.entityGuid) {
+                    newRelicDetails.entityName = userContext.newrelic.entityName;
+                  }
+
+                  toolEvent.newRelicDetails = newRelicDetails;
+                }
+
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(toolEvent)}\n\n`));
                 toolCallsHistory.push({ name: block.name, input: block.input });
               } else if (block.type === 'thinking') {

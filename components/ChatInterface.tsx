@@ -15,10 +15,20 @@ interface FileAttachment {
   preview?: string; // For image previews
 }
 
+interface NewRelicDetails {
+  type: 'mcp';
+  accountId?: number | string;
+  entityGuid?: string;
+  entityName?: string;
+  nrqlQuery?: string;
+  category?: string;
+}
+
 interface ToolCall {
   name: string;
   input?: Record<string, unknown>;
   paramSummary?: string;
+  newRelicDetails?: NewRelicDetails;
 }
 
 interface TokenUsage {
@@ -924,7 +934,53 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                                     <span className="text-[10px] font-mono font-medium text-[var(--md-on-surface)]">
                                       {tool}
                                     </span>
+                                    {toolCall.newRelicDetails && (
+                                      <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium bg-[#1CE783]/20 text-[#1CE783]">
+                                        MCP
+                                      </span>
+                                    )}
                                   </div>
+                                  {/* New Relic details panel */}
+                                  {toolCall.newRelicDetails && (
+                                    <div className="px-3 py-2 bg-[#1CE783]/5 border-b border-[var(--md-outline-variant)]">
+                                      <div className="text-[10px] font-medium text-[#1CE783] mb-1.5 flex items-center gap-1">
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                                        </svg>
+                                        New Relic MCP Call
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                                        {toolCall.newRelicDetails.accountId && (
+                                          <div>
+                                            <span className="text-[var(--md-on-surface-variant)]">Account ID: </span>
+                                            <span className="font-mono text-[var(--md-on-surface)]">{toolCall.newRelicDetails.accountId}</span>
+                                          </div>
+                                        )}
+                                        {toolCall.newRelicDetails.category && (
+                                          <div>
+                                            <span className="text-[var(--md-on-surface-variant)]">Category: </span>
+                                            <span className="font-medium text-[var(--md-on-surface)] capitalize">{toolCall.newRelicDetails.category}</span>
+                                          </div>
+                                        )}
+                                        {toolCall.newRelicDetails.entityGuid && (
+                                          <div className="col-span-2">
+                                            <span className="text-[var(--md-on-surface-variant)]">Entity: </span>
+                                            <span className="font-mono text-[var(--md-on-surface)]">
+                                              {toolCall.newRelicDetails.entityName || toolCall.newRelicDetails.entityGuid.substring(0, 20) + '...'}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {toolCall.newRelicDetails.nrqlQuery && (
+                                          <div className="col-span-2 mt-1">
+                                            <span className="text-[var(--md-on-surface-variant)]">NRQL: </span>
+                                            <code className="block mt-0.5 p-1.5 rounded bg-[var(--md-surface-container-highest)] font-mono text-[9px] text-[#1CE783] overflow-x-auto whitespace-pre-wrap">
+                                              {toolCall.newRelicDetails.nrqlQuery}
+                                            </code>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                   <pre className="px-3 py-2 text-xs font-mono text-[var(--md-on-surface-variant)] overflow-x-auto max-h-72 overflow-y-auto whitespace-pre-wrap break-all">
                                     {JSON.stringify(toolCall.input, null, 2)}
                                   </pre>
@@ -933,18 +989,44 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                             }
 
                             // Compact mode: show server, tool name, and parameter summary
+                            // For New Relic, show a special indicator with key details
+                            const nrDetails = toolCall.newRelicDetails;
                             return (
                               <span
                                 key={idx}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono bg-[var(--md-surface-container-high)]"
-                                title={toolCall.paramSummary || undefined}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono ${
+                                  nrDetails ? 'bg-[#1CE783]/10 border border-[#1CE783]/20' : 'bg-[var(--md-surface-container-high)]'
+                                }`}
+                                title={nrDetails
+                                  ? `MCP | Account: ${nrDetails.accountId || 'N/A'} | Category: ${nrDetails.category || 'N/A'}${nrDetails.nrqlQuery ? ` | NRQL: ${nrDetails.nrqlQuery}` : ''}`
+                                  : (toolCall.paramSummary || undefined)
+                                }
                               >
-                                {server && (
+                                {nrDetails && (
+                                  <span className="text-[#1CE783] font-semibold">NR</span>
+                                )}
+                                {server && !nrDetails && (
                                   <span className="text-[var(--md-accent)]">{server}</span>
                                 )}
-                                {server && <span className="text-[var(--md-outline)]">/</span>}
-                                <span className="text-[var(--md-on-surface-variant)]">{tool}</span>
-                                {toolCall.paramSummary && (
+                                {(server || nrDetails) && <span className="text-[var(--md-outline)]">/</span>}
+                                <span className={nrDetails ? 'text-[#1CE783]/80' : 'text-[var(--md-on-surface-variant)]'}>{tool}</span>
+                                {nrDetails?.accountId && (
+                                  <>
+                                    <span className="text-[var(--md-outline)]">•</span>
+                                    <span className="text-[var(--md-on-surface-variant)] opacity-70">
+                                      acct:{nrDetails.accountId}
+                                    </span>
+                                  </>
+                                )}
+                                {nrDetails?.category && (
+                                  <>
+                                    <span className="text-[var(--md-outline)]">•</span>
+                                    <span className="text-[var(--md-on-surface-variant)] opacity-70 capitalize">
+                                      {nrDetails.category}
+                                    </span>
+                                  </>
+                                )}
+                                {!nrDetails && toolCall.paramSummary && (
                                   <>
                                     <span className="text-[var(--md-outline)]"> </span>
                                     <span className="text-[var(--md-on-surface-variant)] opacity-70">
@@ -1077,40 +1159,84 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
 
                             if (verbose && toolCall.input) {
                               // Verbose streaming: show tool with input
+                              const nrDetails = toolCall.newRelicDetails;
                               return (
                                 <div
                                   key={idx}
-                                  className="rounded-lg bg-[var(--md-surface-container-high)] overflow-hidden"
+                                  className={`rounded-lg overflow-hidden ${nrDetails ? 'bg-[#1CE783]/5 border border-[#1CE783]/20' : 'bg-[var(--md-surface-container-high)]'}`}
                                 >
                                   <div className={`px-2 py-1 flex items-center gap-1.5 ${
                                     isLatest
-                                      ? 'bg-[var(--md-success)]/10'
+                                      ? nrDetails ? 'bg-[#1CE783]/10' : 'bg-[var(--md-success)]/10'
                                       : 'bg-[var(--md-surface-container-highest)]'
                                   }`}>
                                     {isLatest ? (
-                                      <svg className="w-3 h-3 animate-spin flex-shrink-0 text-[var(--md-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <svg className={`w-3 h-3 animate-spin flex-shrink-0 ${nrDetails ? 'text-[#1CE783]' : 'text-[var(--md-success)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                                         <path d="M12 2a10 10 0 0 1 10 10" />
                                       </svg>
                                     ) : (
-                                      <svg className="w-3 h-3 flex-shrink-0 text-[var(--md-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <svg className={`w-3 h-3 flex-shrink-0 ${nrDetails ? 'text-[#1CE783]' : 'text-[var(--md-success)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <polyline points="20 6 9 17 4 12" />
                                       </svg>
                                     )}
-                                    {server && (
+                                    {nrDetails && (
+                                      <span className="text-[10px] font-mono font-semibold text-[#1CE783]">NR</span>
+                                    )}
+                                    {server && !nrDetails && (
                                       <span className={`text-[10px] font-mono ${
                                         isLatest ? 'text-[var(--md-accent)]' : 'text-[var(--md-accent)]'
                                       }`}>
                                         {server}
                                       </span>
                                     )}
-                                    {server && <span className="text-[10px] text-[var(--md-outline)]">/</span>}
+                                    {(server || nrDetails) && <span className="text-[10px] text-[var(--md-outline)]">/</span>}
                                     <span className={`text-[10px] font-mono font-medium ${
-                                      isLatest ? 'text-[var(--md-success)]' : 'text-[var(--md-on-surface)]'
+                                      isLatest ? (nrDetails ? 'text-[#1CE783]' : 'text-[var(--md-success)]') : 'text-[var(--md-on-surface)]'
                                     }`}>
                                       {tool}
                                     </span>
+                                    {nrDetails && (
+                                      <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium bg-[#1CE783]/20 text-[#1CE783]">
+                                        MCP
+                                      </span>
+                                    )}
                                   </div>
+                                  {/* New Relic details panel for streaming */}
+                                  {nrDetails && (
+                                    <div className="px-3 py-2 bg-[#1CE783]/5 border-b border-[#1CE783]/10">
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                                        {nrDetails.accountId && (
+                                          <div>
+                                            <span className="text-[var(--md-on-surface-variant)]">Account ID: </span>
+                                            <span className="font-mono text-[#1CE783]">{nrDetails.accountId}</span>
+                                          </div>
+                                        )}
+                                        {nrDetails.category && (
+                                          <div>
+                                            <span className="text-[var(--md-on-surface-variant)]">Category: </span>
+                                            <span className="font-medium text-[#1CE783] capitalize">{nrDetails.category}</span>
+                                          </div>
+                                        )}
+                                        {nrDetails.entityGuid && (
+                                          <div className="col-span-2">
+                                            <span className="text-[var(--md-on-surface-variant)]">Entity: </span>
+                                            <span className="font-mono text-[var(--md-on-surface)]">
+                                              {nrDetails.entityName || nrDetails.entityGuid.substring(0, 20) + '...'}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {nrDetails.nrqlQuery && (
+                                          <div className="col-span-2 mt-1">
+                                            <span className="text-[var(--md-on-surface-variant)]">NRQL: </span>
+                                            <code className="block mt-0.5 p-1.5 rounded bg-[var(--md-surface-container-highest)] font-mono text-[9px] text-[#1CE783] overflow-x-auto whitespace-pre-wrap">
+                                              {nrDetails.nrqlQuery}
+                                            </code>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                   <pre className="px-3 py-2 text-xs font-mono text-[var(--md-on-surface-variant)] overflow-x-auto max-h-72 overflow-y-auto whitespace-pre-wrap break-all">
                                     {JSON.stringify(toolCall.input, null, 2)}
                                   </pre>
@@ -1119,32 +1245,51 @@ const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(functi
                             }
 
                             // Compact streaming with parameter summary
+                            const nrDetailsCompact = toolCall.newRelicDetails;
                             return (
                               <div
                                 key={idx}
                                 className={`flex items-center gap-1.5 text-xs font-mono ${
-                                  isLatest
-                                    ? 'text-[var(--md-success)]'
-                                    : 'text-[var(--md-on-surface-variant)]'
+                                  nrDetailsCompact
+                                    ? (isLatest ? 'text-[#1CE783]' : 'text-[#1CE783]/70')
+                                    : (isLatest ? 'text-[var(--md-success)]' : 'text-[var(--md-on-surface-variant)]')
                                 }`}
-                                title={toolCall.paramSummary || undefined}
+                                title={nrDetailsCompact
+                                  ? `MCP | Account: ${nrDetailsCompact.accountId || 'N/A'} | Category: ${nrDetailsCompact.category || 'N/A'}${nrDetailsCompact.nrqlQuery ? ` | NRQL: ${nrDetailsCompact.nrqlQuery}` : ''}`
+                                  : (toolCall.paramSummary || undefined)
+                                }
                               >
                                 {isLatest ? (
-                                  <svg className="w-3 h-3 animate-spin flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <svg className={`w-3 h-3 animate-spin flex-shrink-0 ${nrDetailsCompact ? 'text-[#1CE783]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                                     <path d="M12 2a10 10 0 0 1 10 10" />
                                   </svg>
                                 ) : (
-                                  <svg className="w-3 h-3 flex-shrink-0 text-[var(--md-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <svg className={`w-3 h-3 flex-shrink-0 ${nrDetailsCompact ? 'text-[#1CE783]' : 'text-[var(--md-success)]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <polyline points="20 6 9 17 4 12" />
                                   </svg>
                                 )}
-                                {server && (
+                                {nrDetailsCompact && (
+                                  <span className="font-semibold">NR</span>
+                                )}
+                                {server && !nrDetailsCompact && (
                                   <span className="text-[var(--md-accent)]">{server}</span>
                                 )}
-                                {server && <span className="text-[var(--md-outline)]">/</span>}
+                                {(server || nrDetailsCompact) && <span className="text-[var(--md-outline)]">/</span>}
                                 <span className="truncate">{tool}</span>
-                                {toolCall.paramSummary && (
+                                {nrDetailsCompact?.accountId && (
+                                  <>
+                                    <span className="text-[var(--md-outline)]">•</span>
+                                    <span className="opacity-70">acct:{nrDetailsCompact.accountId}</span>
+                                  </>
+                                )}
+                                {nrDetailsCompact?.category && (
+                                  <>
+                                    <span className="text-[var(--md-outline)]">•</span>
+                                    <span className="opacity-70 capitalize">{nrDetailsCompact.category}</span>
+                                  </>
+                                )}
+                                {!nrDetailsCompact && toolCall.paramSummary && (
                                   <>
                                     <span className="text-[var(--md-outline)]"> </span>
                                     <span className="text-[var(--md-on-surface-variant)] opacity-70 truncate">
